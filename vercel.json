@@ -3,14 +3,6 @@
   "outputDirectory": "dist/varpal/browser",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://sisvarpalbackend.onrender.com/api/:path*"
-    },
-    {
-      "source": "/media/:path*",
-      "destination": "https://sisvarpalbackend.onrender.com/media/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -2,6 +2,7 @@ import { HttpBackend, HttpClient, HttpErrorResponse } from '@angular/common/http
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 import { mensajeError, sesionRechazada } from './api-error';
+import { rutaApi } from './backend';
 import { Usuario } from './models';
 
 const REFRESH_KEY = 'varpal_refresh';
@@ -33,7 +34,7 @@ export class AuthService {
 
   entrar(email: string, password: string): Observable<Usuario> {
     return this.crudo
-      .post<LoginRespuesta>('/api/auth/login/', { email, password })
+      .post<LoginRespuesta>(rutaApi('/api/auth/login/'), { email, password })
       .pipe(
         tap((res) => this.guardar(res.access, res.refresh, res.user)),
         map((res) => res.user),
@@ -45,7 +46,7 @@ export class AuthService {
     const refresh = localStorage.getItem(REFRESH_KEY);
     if (!refresh) return throwError(() => new Error('No hay sesión guardada.'));
 
-    this.refresh$ = this.crudo.post<RefreshRespuesta>('/api/auth/refresh/', { refresh }).pipe(
+    this.refresh$ = this.crudo.post<RefreshRespuesta>(rutaApi('/api/auth/refresh/'), { refresh }).pipe(
       tap((res) => {
         this.access.set(res.access);
         localStorage.setItem(REFRESH_KEY, res.refresh);

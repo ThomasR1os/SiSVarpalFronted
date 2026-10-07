@@ -5,6 +5,7 @@ import { ApplicationConfig, LOCALE_ID, provideAppInitializer, provideBrowserGlob
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
+import { backendInterceptor } from './core/backend';
 import { AuthService } from './core/auth.service';
 
 registerLocaleData(localeEsPe);
@@ -14,7 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([backendInterceptor, authInterceptor])),
     { provide: LOCALE_ID, useValue: 'es-PE' },
     provideAppInitializer(() => inject(AuthService).restaurar()),
   ],
