@@ -1,0 +1,283 @@
+<div class="panel-head">
+  <div>
+    <h2>Operación</h2>
+    <p>Destinos y rutas del mismo cliente y de la misma fecha.</p>
+  </div>
+  <div class="barra-filtros">
+    <label class="control">Fecha
+      <input type="date" [value]="fecha()" (change)="cambiarFecha($event)" />
+    </label>
+    <label class="control">Cliente
+      <select [value]="clienteId() ?? ''" (change)="cambiarCliente($event)">
+        <option value="">Todos los clientes</option>
+        @for (cliente of clientes(); track cliente.id) {
+          <option [value]="cliente.id">{{ cliente.razon_social }}</option>
+        }
+      </select>
+    </label>
+  </div>
+</div>
+
+@if (!armando() && !rutaAbierta() && (error() || aviso())) {
+  <div class="flex flex-col gap-4">
+    @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+    @if (aviso()) { <div class="alert alert-info">{{ aviso() }}</div> }
+  </div>
+}
+
+@if (rutaAbierta(); as ruta) {
+  <section class="card card-body bg-base-100 border border-base-300 shadow-sm">
+    <app-ruta-detalle [ruta]="ruta" modo="admin" (cambio)="actualizarRuta($event)" (cerrada)="rutaAbierta.set(null)" />
+  </section>
+} @else if (armando()) {
+  <section class="card card-body bg-base-100 border border-base-300 shadow-sm gap-4">
+    <div class="panel-head">
+      <div>
+        <h2>Armar ruta</h2>
+        <p>Sugerir orden solo previsualiza. Guardar deja la ruta en borrador.</p>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn btn-ghost" (click)="volverArmado()">Volver</button>
+      </div>
+    </div>
+    @if (error() || aviso()) {
+      <div class="flex flex-col gap-4">
+        @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+        @if (aviso()) { <div class="alert alert-info">{{ aviso() }}</div> }
+      </div>
+    }
+    <div class="mapa-caja">
+      <app-mapa [marcas]="marcasPreview()" [geometria]="geometriaPreview()" [encuadre]="'preview-' + orden().join('-') + '-' + baseOrigenId() + '-' + baseFinalId() + '-' + (preview() ? 'geo' : 'recta') + '-' + (catalogo() ? 'ok' : '')" />
+    </div>
+    @if (preview(); as previa) {
+      <p>{{ distancia(previa.distancia_metros) }} · {{ duracion(previa.duracion_segundos) }}
+        @if (!previa.dentro_de_lima) { · Parte del recorrido queda fuera de Lima. }
+      </p>
+    }
+    <div class="flex flex-col gap-2">
+      @for (id of orden(); track id; let indice = $index) {
+        <div class="parada">
+          <span class="font-semibold">{{ indice + 1 }}. {{ etiquetaDestino(id) }}</span>
+          <span class="flex flex-wrap gap-1">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="moverOrden(indice, -1)" [disabled]="indice === 0">Subir</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="moverOrden(indice, 1)" [disabled]="indice === orden().length - 1">Bajar</button>
+          </span>
+        </div>
+      }
+    </div>
+    <form class="form-grid" [formGroup]="rutaForm">
+      <label class="control">Conductor
+        <select formControlName="conductor_id">
+          <option value="">Elige</option>
+          @for (persona of catalogo()?.conductores ?? []; track persona.id) {
+            <option [value]="persona.id">{{ persona.nombre }} {{ persona.apellido }}</option>
+          }
+        </select>
+      </label>
+      <label class="control">Vehículo
+        <select formControlName="vehiculo_id">
+          <option value="">Elige</option>
+          @for (vehiculo of catalogo()?.vehiculos ?? []; track vehiculo.id) {
+            <option [value]="vehiculo.id">{{ vehiculo.placa }}</option>
+          }
+        </select>
+      </label>
+      <label class="control">Base de origen
+        <select formControlName="base_origen_id" (change)="cambiarBase('origen', $event)">
+          <option value="">Dirección principal del cliente</option>
+          @for (punto of catalogo()?.origenes ?? []; track punto.id) {
+            <option [value]="punto.id">{{ punto.nombre }}</option>
+          }
+        </select>
+      </label>
+      <label class="control">Base final
+        <select formControlName="base_final_id" (change)="cambiarBase('final', $event)">
+          <option value="">Dirección principal de Varpal</option>
+          @for (punto of catalogo()?.finales ?? []; track punto.id) {
+            <option [value]="punto.id">{{ punto.nombre }}</option>
+          }
+        </select>
+      </label>
+      <div class="wide flex flex-wrap gap-3">
+        @for (auxiliar of catalogo()?.auxiliares ?? []; track auxiliar.id) {
+          <label class="label cursor-pointer justify-start gap-2 font-normal">
+            <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="auxiliares().includes(auxiliar.id)" [disabled]="!auxiliares().includes(auxiliar.id) && auxiliares().length >= 4" (change)="alternarAuxiliar(auxiliar.id, $event)" />
+            {{ auxiliar.nombre }} {{ auxiliar.apellido }}
+          </label>
+        }
+      </div>
+    </form>
+    <div class="acciones-pie">
+      <button type="button" class="btn btn-outline" (click)="sugerir()" [disabled]="enviando()">Sugerir orden</button>
+      <button type="button" class="btn btn-primary" (click)="guardarBorrador()" [disabled]="enviando()">Guardar borrador</button>
+    </div>
+  </section>
+} @else {
+  <div class="layout-operacion">
+    <section class="card card-body bg-base-100 border border-base-300 shadow-sm">
+      <div class="panel-head">
+        <h3>Destinos</h3>
+        <div class="btns">
+          <button type="button" class="btn btn-ghost btn-sm" (click)="descargarPlantilla()">Plantilla</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="abrirImportar()">Importar Excel</button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="nuevoDestino()">Nuevo</button>
+        </div>
+      </div>
+      @if (!clienteId()) {
+        <p class="vacio-texto">Elige un cliente para ver y cargar sus destinos.</p>
+      } @else {
+        <div class="barra-filtros">
+          <label class="control">Estado
+            <select [value]="estadoDestino()" (change)="cambiarEstadoDestino($event)">
+              <option value="">Todos</option>
+              <option value="NO_INICIADO">No iniciado</option>
+              <option value="EN_PROCESO">En proceso</option>
+              <option value="EXITOSO">Exitoso</option>
+              <option value="FALLIDO">Fallido</option>
+            </select>
+          </label>
+          <label class="label mb-2 cursor-pointer justify-start gap-2 font-normal"><input type="checkbox" class="checkbox checkbox-primary" [checked]="sinRuta()" (change)="cambiarSinRuta($event)" /> Sin ruta</label>
+        </div>
+        <div class="data-table">
+          <table class="table table-zebra table-sm">
+            <thead><tr><th></th><th>Código</th><th>Servicio</th><th>Dirección</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              @for (destino of destinos(); track destino.id) {
+                <tr>
+                  <td data-label="Elegir">
+                    @if (destino.estado === 'NO_INICIADO' && !destino.ruta_id) {
+                      <input type="checkbox" class="checkbox checkbox-primary" [checked]="seleccion().includes(destino.id)" (change)="alternarSeleccion(destino.id, $event)" [attr.aria-label]="'Seleccionar ' + destino.codigo_externo" />
+                    }
+                  </td>
+                  <td data-label="Código">{{ destino.codigo_externo }}</td>
+                  <td data-label="Servicio">{{ etiquetaTipo(destino.tipo_servicio) }}</td>
+                  <td data-label="Dirección">{{ destino.direccion }}<div class="ayuda">{{ destino.distrito }}</div></td>
+                  <td data-label="Estado"><app-badge [estado]="destino.estado" /></td>
+                  <td class="acciones" data-label="Acciones">
+                    <div class="flex flex-wrap gap-2">
+                      @if (destino.estado === 'NO_INICIADO') {
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="editarDestino(destino)">Editar</button>
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="abrirReprogramar(destino)">Reprogramar</button>
+                      }
+                      @if (destino.estado === 'NO_INICIADO' && !destino.ruta_id) {
+                        <button type="button" class="btn btn-error btn-outline btn-sm" (click)="eliminarDestino(destino)">Eliminar</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty { <tr class="fila-vacia"><td colspan="6">No hay destinos para esta fecha.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+        <app-paginacion [pagina]="paginaDestinos()" [tamano]="tamano" [total]="totalDestinos()" (paginaChange)="irDestinos($event)" />
+        <div class="acciones-pie">
+          <button type="button" class="btn btn-primary" (click)="abrirArmado()" [disabled]="!seleccion().length">
+            Armar ruta con {{ seleccion().length }} destinos
+          </button>
+        </div>
+      }
+    </section>
+    <section class="card card-body bg-base-100 border border-base-300 shadow-sm">
+      <div class="panel-head">
+        <h3>Rutas</h3>
+        <label class="control min-w-40">Estado
+          <select [value]="estadoRuta()" (change)="cambiarEstadoRuta($event)">
+            <option value="">Todas</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="NO_INICIADA">No iniciada</option>
+            <option value="EN_PROCESO">En proceso</option>
+            <option value="FINALIZADA">Finalizada</option>
+            <option value="CANCELADA">Cancelada</option>
+          </select>
+        </label>
+      </div>
+      <div class="lista-rutas">
+        @for (ruta of rutas(); track ruta.id) {
+          <button type="button" class="ruta-card" (click)="abrirRuta(ruta.id)">
+            <span class="flex flex-wrap items-center gap-2"><strong>#{{ ruta.id }} {{ ruta.cliente_nombre }}</strong><app-badge [estado]="ruta.estado" /></span>
+            <span class="ayuda">{{ nombrePersona(ruta.conductor) }} · {{ ruta.vehiculo?.placa || 'sin vehículo' }} · {{ ruta.paradas.length }} paradas</span>
+          </button>
+        } @empty { <p class="vacio-texto">No hay rutas para este filtro.</p> }
+      </div>
+      <app-paginacion [pagina]="paginaRutas()" [tamano]="tamano" [total]="totalRutas()" (paginaChange)="irRutas($event)" />
+    </section>
+  </div>
+}
+
+@if (dialogo() === 'destino') {
+  <app-modal [titulo]="editando() ? 'Editar destino' : 'Nuevo destino'" (cerrar)="dialogo.set('')">
+    <form class="flex flex-col gap-4" [formGroup]="destinoForm" (ngSubmit)="guardarDestino()">
+      <div class="form-grid">
+        <label class="control">Código<input formControlName="codigo_externo" /></label>
+        <label class="control">Fecha<input type="date" formControlName="fecha" [min]="fechaMinima" /></label>
+        <label class="control">Tipo de servicio
+          <select formControlName="tipo_servicio" (change)="cambiarTipo($event)">
+            <option value="ENTREGA">Entrega</option>
+            <option value="INTERCAMBIO">Intercambio</option>
+            <option value="RECOJO">Recojo</option>
+            <option value="TRASLADO">Traslado</option>
+          </select>
+        </label>
+        <label class="control">Motivo del servicio<input formControlName="motivo_servicio" /></label>
+        @if (tipo() === 'TRASLADO') {
+          <label class="control wide">Sede
+            <select formControlName="sede_id">
+              <option value="">Elige la sede</option>
+              @for (sede of sedes(); track sede.id) {
+                <option [value]="sede.id">{{ sede.codigo }} · {{ sede.nombre }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <label class="control">Documento<input formControlName="documento_receptor" /></label>
+          <label class="control">Teléfono<input formControlName="telefono_receptor" /></label>
+          <label class="control">Nombres<input formControlName="nombre_receptor" /></label>
+          <label class="control">Apellidos<input formControlName="apellido_receptor" /></label>
+          <label class="control wide">Dirección<input formControlName="direccion" /></label>
+          <label class="control">Distrito<input formControlName="distrito" /></label>
+          <label class="control">Referencia<input formControlName="referencia" /></label>
+          <label class="control">Latitud<input formControlName="latitud" /></label>
+          <label class="control">Longitud<input formControlName="longitud" /></label>
+        }
+        <label class="control wide">Observaciones<textarea formControlName="observaciones"></textarea></label>
+      </div>
+      <button class="btn btn-primary" type="submit" [disabled]="enviando()">Guardar destino</button>
+    </form>
+  </app-modal>
+}
+
+@if (dialogo() === 'reprogramar') {
+  <app-modal titulo="Reprogramar destino" (cerrar)="dialogo.set('')">
+    <form class="flex flex-col gap-4" [formGroup]="reprogramarForm" (ngSubmit)="reprogramar()">
+      <p class="ayuda">Solo si sigue en no iniciado. Si cambias la fecha, sale de la ruta que todavía no inició.</p>
+      <label class="control">Nueva fecha<input type="date" formControlName="fecha" [min]="fechaMinima" /></label>
+      <button class="btn btn-primary" type="submit" [disabled]="enviando()">Reprogramar</button>
+    </form>
+  </app-modal>
+}
+
+@if (dialogo() === 'importar') {
+  <app-modal titulo="Importar destinos" (cerrar)="dialogo.set('')">
+    <div class="flex flex-col gap-4">
+      <p class="ayuda">Las filas sin latitud y longitud se rechazan. El resto se carga. Si el cliente usa otros encabezados, configura el mapeo una sola vez en Configuración.</p>
+      <input type="file" class="file-input w-full" accept=".xlsx,.xls" (change)="elegirArchivo($event)" />
+      @if (archivoNombre()) { <span>{{ archivoNombre() }}</span> }
+      <button type="button" class="btn btn-primary" (click)="importar()" [disabled]="enviando()">Cargar archivo</button>
+      @if (importacion(); as resultado) {
+        <div class="alert alert-info">Creados: {{ resultado.creados }}. Rechazados: {{ resultado.rechazados.length }}.</div>
+        @if (resultado.rechazados.length) {
+          <div class="data-table">
+            <table class="table table-zebra table-sm">
+              <thead><tr><th>Fila</th><th>Errores</th></tr></thead>
+              <tbody>
+                @for (fila of resultado.rechazados; track fila.fila) {
+                  <tr><td data-label="Fila">{{ fila.fila }}</td><td data-label="Errores">{{ fila.errores.join(' ') }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  </app-modal>
+}
