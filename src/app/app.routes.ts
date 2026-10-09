@@ -4,6 +4,14 @@ import { AdminShell } from './features/admin/admin-shell';
 import { Configuracion } from './features/admin/configuracion';
 import { MapaVivo } from './features/admin/mapa-vivo';
 import { Operacion } from './features/admin/operacion';
+import { ClienteAyuda } from './features/cliente/cliente-ayuda';
+import { ClienteDashboard } from './features/cliente/cliente-dashboard';
+import { ClienteEvidencias } from './features/cliente/cliente-evidencias';
+import { ClienteReporte } from './features/cliente/cliente-reporte';
+import { ClienteRutas } from './features/cliente/cliente-rutas';
+
+import { ClienteHistorial } from './features/cliente/cliente-historial';
+import { ClienteShell } from './features/cliente/cliente-shell';
 import { ClienteVista } from './features/cliente/cliente';
 import { Conductor } from './features/conductor/conductor';
 import { Login } from './features/login/login';
@@ -31,9 +39,19 @@ export const routes: Routes = [
   },
   {
     path: 'cliente',
-    component: ClienteVista,
+    component: ClienteShell,
     canActivate: [sesionGuard, rolGuard],
     data: { roles: ['CLIENTE'] },
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'seguimiento' },
+      { path: 'seguimiento', component: ClienteVista },
+      { path: 'dashboard', component: ClienteDashboard },
+      { path: 'reporte', component: ClienteReporte },
+      { path: 'rutas', component: ClienteRutas },
+      { path: 'evidencias', component: ClienteEvidencias },
+      { path: 'ayuda', component: ClienteAyuda },
+      { path: 'historial', component: ClienteHistorial },
+    ],
   },
   {
     path: 'sin-acceso',

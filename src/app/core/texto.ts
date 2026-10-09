@@ -94,6 +94,13 @@ export function fechaCorta(valor: string | null | undefined): string {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+export function horaCorta(valor: string | null | undefined): string {
+  if (!valor) return '—';
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return valor.slice(0, 5);
+  return fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+}
+
 export function fechaHora(valor: string | null | undefined): string {
   if (!valor) return '—';
   const fecha = new Date(valor);

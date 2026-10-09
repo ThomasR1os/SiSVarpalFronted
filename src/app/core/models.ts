@@ -117,6 +117,7 @@ export interface Destino {
   datos_extra: Record<string, unknown>;
   estado: EstadoDestino;
   motivo_id: number | null;
+  motivo_descripcion?: string | null;
   observacion_cierre: string;
   ruta_id: number | null;
   creado_en: string;
