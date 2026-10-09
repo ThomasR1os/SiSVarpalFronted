@@ -1,0 +1,6 @@
+# Angular usa rutas del navegador (/cliente, /admin, ...).
+# Sin esta regla, recargar una pestaña pide un archivo que no existe y Netlify muestra su 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
