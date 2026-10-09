@@ -1,5 +1,7 @@
-# Angular usa rutas del navegador (/cliente, /admin, ...).
-# Sin esta regla, recargar una pestaña pide un archivo que no existe y Netlify muestra su 404.
+[build]
+  command = "npm run build"
+  publish = "dist/varpal/browser"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
