@@ -128,7 +128,7 @@ import { CerrarParada } from './cerrar-parada';
               <span>{{ parada.direccion }}, {{ parada.distrito }}</span>
               <span class="ayuda">{{ parada.nombre_receptor }} {{ parada.apellido_receptor }}</span>
               @if (parada.estado === 'EN_PROCESO' && (modo() === 'admin' || modo() === 'conductor')) {
-                <app-cerrar-parada [destinoId]="parada.destino_id" (cerrado)="recargar()" />
+                <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" />
               }
               @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO') {
                 <button type="button" class="btn btn-ghost btn-sm" (click)="verEvidencias(parada.destino_id)">Ver fotos</button>

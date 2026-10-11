@@ -201,6 +201,23 @@ export function paradasCerradas(paradas: { estado: string }[]): boolean {
   return paradas.length > 0 && paradas.every((p) => p.estado === 'EXITOSO' || p.estado === 'FALLIDO');
 }
 
+export function horarioParadas(paradas: { orden: number; hora_estimada: string | null }[]): string {
+  const horas = [...paradas]
+    .sort((a, b) => a.orden - b.orden)
+    .map((parada) => parada.hora_estimada)
+    .filter((hora): hora is string => !!hora);
+  if (!horas.length) return 'Horario por confirmar';
+  const inicio = horaCorta(horas[0]);
+  const fin = horaCorta(horas[horas.length - 1]);
+  return inicio === fin ? inicio : `${inicio} - ${fin}`;
+}
+
+export function textoAuxiliares(auxiliares: { nombre: string; apellido: string }[]): string {
+  if (!auxiliares.length) return 'Sin auxiliares';
+  const primero = nombrePersona(auxiliares[0]);
+  return auxiliares.length > 1 ? `${primero} (+${auxiliares.length - 1})` : primero;
+}
+
 export function pesoRuta(estado: EstadoRuta): number {
   switch (estado) {
     case 'EN_PROCESO':

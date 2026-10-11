@@ -44,6 +44,7 @@
 @theme {
   --font-sans: "Source Sans 3", "Segoe UI", sans-serif;
   --font-display: "Outfit", "Segoe UI", sans-serif;
+  --color-azul: #1769e0;
 }
 
 @layer base {
@@ -238,6 +239,33 @@
     min-height: 2.75rem;
     border-radius: 0.75rem;
   }
+  .cd-card {
+    @apply flex flex-col gap-4 rounded-box border border-base-300/70 bg-base-100 p-4 shadow-sm;
+  }
+  .cd-accion {
+    @apply relative flex min-h-44 flex-col gap-2.5 overflow-hidden rounded-box p-3.5 text-left text-white shadow-md transition active:scale-[0.98] sm:p-5;
+  }
+  .cd-accion-flecha {
+    @apply relative mt-auto grid size-9 place-items-center self-end rounded-full bg-white shadow;
+  }
+  .cd-etiqueta {
+    @apply rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase;
+  }
+  .cd-btn {
+    @apply btn min-h-12 w-full gap-2 rounded-xl border-0 bg-azul text-base text-white shadow-sm hover:bg-azul/90;
+  }
+  .cd-dato {
+    @apply flex min-w-0 items-start gap-2 leading-snug;
+  }
+  .cd-dato > app-icono {
+    @apply text-base-content/55;
+  }
+  .cd-dato-label {
+    @apply block text-xs text-base-content/55;
+  }
+  .cd-tab-activa {
+    @apply bg-azul/10 text-azul;
+  }
 }
 
 app-mapa,
@@ -271,6 +299,14 @@ app-mapa,
   background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: #fff;
   box-shadow: inset 3px 0 0 var(--color-accent);
+}
+.portal-side {
+  background: #07182e;
+}
+.drawer-side .portal-nav :where(li > .menu-active) {
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: none;
 }
 .pin-icon {
   background: transparent;

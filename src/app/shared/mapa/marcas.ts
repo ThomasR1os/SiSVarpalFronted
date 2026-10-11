@@ -9,6 +9,12 @@ export interface MarcaMapa {
   texto: string;
   titulo: string;
   estado?: string;
+  color?: string;
+}
+
+export interface LineaMapa {
+  coords: [number, number][];
+  color: string;
 }
 
 export function lineaGeo(linea: LineStringGeo | null | undefined): [number, number][] | null {
@@ -37,8 +43,10 @@ export function marcasRuta(opciones: {
   final?: PuntoRuta | null;
   camion?: Posicion | null;
   camionId?: number;
+  color?: string;
 }): MarcaMapa[] {
   const marcas: MarcaMapa[] = [];
+  const color = opciones.color;
   const origen = marcaSiValida(opciones.origen);
   if (origen && opciones.origen) {
     marcas.push({
@@ -48,6 +56,7 @@ export function marcasRuta(opciones: {
       tipo: 'origen',
       texto: 'O',
       titulo: `Origen · ${opciones.origen.nombre}`,
+      color,
     });
   }
   for (const parada of opciones.paradas) {
@@ -61,6 +70,7 @@ export function marcasRuta(opciones: {
       texto: String(parada.orden),
       titulo: `${parada.orden}. ${parada.codigo_externo ?? ''} ${parada.direccion}`.trim(),
       estado: parada.estado,
+      color,
     });
   }
   const final = marcaSiValida(opciones.final);
@@ -72,6 +82,7 @@ export function marcasRuta(opciones: {
       tipo: 'final',
       texto: 'V',
       titulo: `Base Varpal · ${opciones.final.nombre}`,
+      color,
     });
   }
   const camion = marcaSiValida(opciones.camion);

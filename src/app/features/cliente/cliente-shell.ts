@@ -40,20 +40,20 @@ import { etiquetaRol, nombrePersona } from '../../core/texto';
       </div>
       <div class="drawer-side z-40">
         <label for="nav-cliente" aria-label="Cerrar menú" class="drawer-overlay"></label>
-        <aside class="flex min-h-full w-72 max-w-[85vw] flex-col bg-neutral p-4 text-neutral-content">
+        <aside class="portal-side flex min-h-full w-72 max-w-[85vw] flex-col p-4 text-neutral-content">
           <img class="mb-2 h-auto w-48 max-w-full" src="logo-varpal.png" alt="Varpal Soluciones Logísticas" />
-          <p class="mb-4 text-xs font-semibold tracking-[0.14em] text-neutral-content/60 uppercase">Cliente</p>
-          <ul class="menu shell-nav w-full gap-1 px-0">
+          <p class="mb-4 text-xs font-semibold tracking-[0.14em] text-neutral-content/60 uppercase">Portal del cliente</p>
+          <ul class="menu portal-nav shell-nav w-full gap-1 px-0">
             <li>
-              <a routerLink="/cliente/seguimiento" routerLinkActive="menu-active" (click)="cerrarMenu()">
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 20l-5.4-2.2A2 2 0 012 15.9V6.6a2 2 0 011.3-1.9L9 2m0 18l6-2.4M9 20V2m6 15.6l5.4 2.2A2 2 0 0022 17.9V6.1a2 2 0 00-1.3-1.9L15 2m0 15.6V2" /></svg>
-                Seguimiento
+              <a routerLink="/cliente/inicio" routerLinkActive="menu-active" [routerLinkActiveOptions]="{ exact: true }" (click)="cerrarMenu()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 10.5L12 4l8 6.5V20a1 1 0 01-1 1h-5v-6H10v6H5a1 1 0 01-1-1v-9.5z" /></svg>
+                Inicio
               </a>
             </li>
             <li>
-              <a routerLink="/cliente/dashboard" routerLinkActive="menu-active" (click)="cerrarMenu()">
+              <a routerLink="/cliente/dashboard" routerLinkActive="menu-active" [routerLinkActiveOptions]="{ exact: true }" (click)="cerrarMenu()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-3" /></svg>
-                Dashboard
+                Indicadores
               </a>
             </li>
             <li>
@@ -64,7 +64,7 @@ import { etiquetaRol, nombrePersona } from '../../core/texto';
             </li>
             <li>
               <a routerLink="/cliente/rutas" routerLinkActive="menu-active" (click)="cerrarMenu()">
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.2" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 20l-5.4-2.2A2 2 0 012 15.9V6.6a2 2 0 011.3-1.9L9 2m0 18l6-2.4M9 20V2m6 15.6l5.4 2.2A2 2 0 0022 17.9V6.1a2 2 0 00-1.3-1.9L15 2m0 15.6V2" /></svg>
                 Rutas programadas
               </a>
             </li>
@@ -80,22 +80,17 @@ import { etiquetaRol, nombrePersona } from '../../core/texto';
                 Ayuda
               </a>
             </li>
-            <li>
-              <a routerLink="/cliente/historial" routerLinkActive="menu-active" (click)="cerrarMenu()">
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Historial
-              </a>
-            </li>
           </ul>
           <div class="mt-auto flex flex-col gap-1 border-t border-white/10 pt-4">
             <strong class="truncate">{{ nombre() }}</strong>
             <span class="text-sm text-neutral-content/70">{{ rol() }}</span>
             <button type="button" class="btn btn-ghost mt-2 justify-start" (click)="salir()">Cerrar sesión</button>
             <div class="mt-1 hidden lg:block">
-              <button type="button" class="btn btn-ghost btn-square" aria-label="Cerrar menú" (click)="contraerMenu()">
+              <button type="button" class="btn btn-ghost justify-start px-2" (click)="contraerMenu()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
+                Cerrar menú
               </button>
             </div>
           </div>
@@ -142,8 +137,11 @@ export class ClienteShell {
 }
 
 function textoSeccion(url: string): { titulo: string; detalle: string } {
+  if (url.includes('/cliente/inicio')) {
+    return { titulo: 'Inicio', detalle: 'Pedidos, avance y cobertura de tu operación.' };
+  }
   if (url.includes('/cliente/dashboard')) {
-    return { titulo: 'Dashboard', detalle: 'Pedidos, avance y cobertura de tu operación.' };
+    return { titulo: 'Indicadores', detalle: 'Pedidos, avance y cobertura de tu operación.' };
   }
   if (url.includes('/cliente/reporte')) {
     return { titulo: 'Reporte', detalle: 'Detalle de pedidos, con estado y responsable.' };

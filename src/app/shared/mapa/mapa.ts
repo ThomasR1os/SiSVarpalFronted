@@ -3,7 +3,7 @@ import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
 import { Posicion } from '../../core/models';
 import { grados } from '../../core/texto';
-import { MarcaMapa, colorEstado } from './marcas';
+import { LineaMapa, MarcaMapa, colorEstado } from './marcas';
 
 @Component({
   selector: 'app-mapa',
@@ -12,6 +12,8 @@ import { MarcaMapa, colorEstado } from './marcas';
 export class Mapa {
   readonly marcas = input<MarcaMapa[]>([]);
   readonly geometria = input<[number, number][] | null>(null);
+  readonly colorLinea = input('#00275a');
+  readonly lineas = input<LineaMapa[]>([]);
   readonly recorrido = input<Posicion[]>([]);
   readonly geocerca = input<[number, number][] | null>(null);
   readonly encuadre = input('');
@@ -29,6 +31,8 @@ export class Mapa {
     effect(() => {
       this.marcas();
       this.geometria();
+      this.colorLinea();
+      this.lineas();
       this.recorrido();
       this.geocerca();
       this.encuadre();
@@ -73,13 +77,16 @@ export class Mapa {
       ).addTo(this.grupo);
     }
 
+    const lineas: LineaMapa[] = [...this.lineas()];
     const linea = this.geometria();
-    if (linea && linea.length > 1) {
-      const coords = linea
+    if (linea) lineas.push({ coords: linea, color: this.colorLinea() });
+    for (const { coords: crudas, color } of lineas) {
+      if (crudas.length < 2) continue;
+      const coords = crudas
         .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
         .map(([lng, lat]) => [lat, lng] as [number, number]);
       if (coords.length > 1) {
-        L.polyline(coords, { color: '#00275a', weight: 4, opacity: 0.9, smoothFactor: 0 }).addTo(this.grupo);
+        L.polyline(coords, { color, weight: 4, opacity: 0.9, smoothFactor: 0 }).addTo(this.grupo);
         puntos.push(...coords);
       }
     }
@@ -122,6 +129,11 @@ export class Mapa {
 function htmlMarca(marca: MarcaMapa): string {
   if (marca.tipo === 'camion') {
     return `<span class="pin pin-camion" title="${esc(marca.titulo)}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3 7h11v8H3V7zm11 2h3.2L20 12.2V15h-6V9zM6.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg></span>`;
+  }
+  if (marca.color) {
+    const cerrada = marca.tipo === 'parada' && (marca.estado === 'EXITOSO' || marca.estado === 'FALLIDO');
+    const anillo = cerrada ? `;box-shadow:0 0 0 3px ${colorEstado(marca.estado)},0 2px 8px rgba(0,20,48,0.28)` : '';
+    return `<span class="pin" style="background:${esc(marca.color)}${anillo}" title="${esc(marca.titulo)}">${esc(marca.texto)}</span>`;
   }
   const color = marca.tipo === 'parada' ? colorEstado(marca.estado) : marca.tipo === 'final' ? '#00275a' : '#0a4f8f';
   return `<span class="pin" style="background:${color}" title="${esc(marca.titulo)}">${esc(marca.texto)}</span>`;

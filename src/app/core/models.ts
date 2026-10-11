@@ -178,6 +178,8 @@ export interface Parada {
   hora_estimada: string | null;
   hora_llegada: string | null;
   hora_salida: string | null;
+  hora_inicio_descarga?: string | null;
+  hora_fin_descarga?: string | null;
 }
 
 export interface LineStringGeo {

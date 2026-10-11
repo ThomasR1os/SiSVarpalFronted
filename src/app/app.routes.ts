@@ -43,7 +43,8 @@ export const routes: Routes = [
     canActivate: [sesionGuard, rolGuard],
     data: { roles: ['CLIENTE'] },
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'seguimiento' },
+      { path: '', pathMatch: 'full', redirectTo: 'inicio' },
+      { path: 'inicio', component: ClienteDashboard },
       { path: 'seguimiento', component: ClienteVista },
       { path: 'dashboard', component: ClienteDashboard },
       { path: 'reporte', component: ClienteReporte },
