@@ -11,6 +11,7 @@ import {
   TAMANO_PAGINA,
   distancia,
   duracion,
+  etiquetaEstado,
   etiquetaTipo,
   fechaCorta,
   hoy,
@@ -19,17 +20,15 @@ import {
   textoCoordenada,
 } from '../../core/texto';
 import { Badge } from '../../shared/badge';
-import { Mapa } from '../../shared/mapa/mapa';
-import { lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
 import { Modal } from '../../shared/modal';
 import { Paginacion } from '../../shared/paginacion';
 import { RutaDetalle } from '../ruta/ruta-detalle';
 
 @Component({
   selector: 'app-operacion',
-  imports: [ReactiveFormsModule, Badge, Mapa, Modal, Paginacion, RutaDetalle],
+  imports: [ReactiveFormsModule, Badge, Modal, Paginacion, RutaDetalle],
   templateUrl: './operacion.html',
-  host: { class: 'flex flex-col gap-4' },
+  host: { class: 'prog-host flex flex-col gap-4' },
 })
 export class Operacion {
   private readonly api = inject(Api);
@@ -38,17 +37,32 @@ export class Operacion {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly tamano = TAMANO_PAGINA;
-  protected readonly fechaMinima = hoy();
+  protected readonly tamanoDestinos = 10;
   protected readonly fechaCorta = fechaCorta;
   protected readonly etiquetaTipo = etiquetaTipo;
   protected readonly nombrePersona = nombrePersona;
   protected readonly distancia = distancia;
   protected readonly duracion = duracion;
 
+  protected readonly fechaDesde = signal(hoy());
   protected readonly fecha = signal(hoy());
   protected readonly clienteId = signal<number | null>(null);
+  protected readonly ambito = signal<'local' | 'provincia'>('local');
+  protected readonly tipoServicio = signal('');
+  protected readonly busqueda = signal('');
   protected readonly estadoDestino = signal('');
   protected readonly sinRuta = signal(false);
+  protected readonly filtrosAbiertos = signal(false);
+  protected readonly verErrores = signal(false);
+  protected readonly verRutas = signal(false);
+  protected readonly arrastrando = signal(false);
+  protected readonly modoAsignacion = signal<'manual' | 'optimizacion'>('manual');
+  protected readonly horaSalida = signal('08:00');
+  protected readonly conductorId = signal('');
+  protected readonly vehiculoId = signal('');
+  protected readonly auxiliar1Id = signal('');
+  protected readonly auxiliar2Id = signal('');
+  protected readonly archivoHora = signal('');
   protected readonly estadoRuta = signal('');
   protected readonly paginaDestinos = signal(1);
   protected readonly paginaRutas = signal(1);
@@ -63,12 +77,11 @@ export class Operacion {
   protected readonly destinosArmado = signal<Destino[]>([]);
   protected readonly baseOrigenId = signal('');
   protected readonly baseFinalId = signal('');
-  protected readonly auxiliares = signal<number[]>([]);
-  protected readonly armando = signal(false);
   protected readonly preview = signal<Optimizacion | null>(null);
   protected readonly catalogo = signal<CatalogoRuta | null>(null);
   protected readonly rutaAbierta = signal<Ruta | null>(null);
-  protected readonly dialogo = signal<'' | 'destino' | 'importar' | 'reprogramar'>('');
+  protected readonly rutaAccion = signal<Ruta | null>(null);
+  protected readonly dialogo = signal<'' | 'destino' | 'inhabilitar' | 'eliminar'>('');
   protected readonly editando = signal<Destino | null>(null);
   protected readonly tipo = signal<TipoServicio>('ENTREGA');
   protected readonly archivoNombre = signal('');
@@ -77,6 +90,7 @@ export class Operacion {
   protected readonly aviso = signal('');
   protected readonly enviando = signal(false);
   private archivo: File | null = null;
+  private solicitud = 0;
 
   protected readonly destinoForm = this.fb.nonNullable.group({
     codigo_externo: ['', Validators.required],
@@ -98,37 +112,66 @@ export class Operacion {
   protected readonly rutaForm = this.fb.nonNullable.group({
     conductor_id: ['', Validators.required],
     vehiculo_id: ['', Validators.required],
+    auxiliar_1: [''],
+    auxiliar_2: [''],
     base_origen_id: [''],
     base_final_id: [''],
   });
-  protected readonly reprogramarForm = this.fb.nonNullable.group({
-    fecha: [hoy(), Validators.required],
+  protected readonly clienteActual = computed(() => this.clientes().find((item) => item.id === this.clienteId()) ?? null);
+  protected readonly nombreCliente = computed(() => this.clienteActual()?.nombre_comercial || this.clienteActual()?.razon_social || 'Sin cliente');
+  protected readonly etiquetaAmbito = computed(() => (this.ambito() === 'local' ? 'Local' : 'Provincia'));
+  protected readonly codigoRuta = computed(() => {
+    const nombre = (this.clienteActual()?.nombre_comercial || this.clienteActual()?.razon_social || 'Ruta')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const sigla = (nombre.match(/[A-Za-z]/g) ?? ['R']).slice(0, 2).join('').toUpperCase();
+    const marca = this.ambito() === 'local' ? 'L' : 'P';
+    return `${sigla}-${marca}-${String(this.totalRutas() + 1).padStart(3, '0')}`;
   });
-
-  protected readonly marcasPreview = computed(() => {
-    const previa = this.preview();
-    const paradas = previa
-      ? previa.paradas.map((p) => ({ ...p, estado: 'NO_INICIADO' as const }))
-      : this.orden().flatMap((id, indice) => {
-          const destino = this.destinosArmado().find((item) => item.id === id);
-          if (!destino) return [];
-          return [{
-            destino_id: destino.id,
-            orden: indice + 1,
-            latitud: destino.latitud,
-            longitud: destino.longitud,
-            direccion: destino.direccion,
-            codigo_externo: destino.codigo_externo,
-            estado: destino.estado,
-          }];
-        });
-    return marcasRuta({
-      paradas,
-      origen: this.baseMarcada(this.catalogo()?.origenes ?? [], this.baseOrigenId()),
-      final: this.baseMarcada(this.catalogo()?.finales ?? [], this.baseFinalId()),
+  protected readonly conductorActual = computed(() =>
+    this.catalogo()?.conductores.find((persona) => persona.id === Number(this.conductorId())) ?? null,
+  );
+  protected readonly vehiculoActual = computed(() =>
+    this.catalogo()?.vehiculos.find((vehiculo) => vehiculo.id === Number(this.vehiculoId())) ?? null,
+  );
+  protected readonly destinosVisibles = computed(() => {
+    const texto = this.busqueda().trim().toLowerCase();
+    const tipo = this.tipoServicio();
+    return this.destinos().filter((destino) => {
+      if (tipo && destino.tipo_servicio !== tipo) return false;
+      if (!texto) return true;
+      const blob = [
+        destino.documento_receptor,
+        destino.codigo_externo,
+        destino.nombre_receptor,
+        destino.apellido_receptor,
+        destino.direccion,
+        destino.distrito,
+      ].join(' ').toLowerCase();
+      return blob.includes(texto);
     });
   });
-  protected readonly geometriaPreview = computed(() => lineaGeo(this.preview()?.geometria_empresa));
+  protected readonly avisoEdicion = computed(() => {
+    const destino = this.editando();
+    const ruta = this.rutaAccion();
+    if (!destino) return 'Revisa la fecha y la dirección antes de crear el destino.';
+    if (destino.estado === 'EN_PROCESO' || ruta?.estado === 'EN_PROCESO') {
+      return 'Este destino está en una ruta ya iniciada. Los cambios afectan al conductor que va en camino.';
+    }
+    if (destino.ruta_id) return 'Este destino ya está en una ruta. Al guardarlo, la ruta usará los datos nuevos.';
+    return 'Vas a modificar este destino.';
+  });
+  protected readonly resumenCarga = computed(() => {
+    const resultado = this.importacion();
+    if (!resultado) return null;
+    const texto = (fila: { errores: string[] }) => fila.errores.join(' ').toLowerCase();
+    return {
+      validos: resultado.creados,
+      errores: resultado.rechazados.length,
+      sinGeo: resultado.rechazados.filter((fila) => /latitud|longitud|coorden|geocod/.test(texto(fila))).length,
+      duplicados: resultado.rechazados.filter((fila) => /duplic/.test(texto(fila))).length,
+    };
+  });
 
   constructor() {
     this.api.get<Pagina<Cliente>>('/api/clientes/', { activo: true, page_size: TAMANO_CATALOGO }).subscribe({
@@ -151,12 +194,29 @@ export class Operacion {
     }
   }
 
-  cambiarFecha(event: Event): void {
-    this.fecha.set((event.target as HTMLInputElement).value);
+  cambiarDesde(event: Event): void {
+    const valor = (event.target as HTMLInputElement).value;
+    if (!valor) return;
+    this.fechaDesde.set(valor);
+    if (this.fecha() < valor) this.fecha.set(valor);
+    this.paginaRutas.set(1);
+    this.paginaDestinos.set(1);
+    this.cargar();
+  }
+
+  cambiarHasta(event: Event): void {
+    const valor = (event.target as HTMLInputElement).value;
+    if (!valor) return;
+    this.fecha.set(valor);
+    if (this.fechaDesde() > valor) this.fechaDesde.set(valor);
     this.paginaDestinos.set(1);
     this.paginaRutas.set(1);
     this.seleccion.set([]);
     this.cargar();
+  }
+
+  etiquetaRango(): string {
+    return `${fechaCorta(this.fechaDesde())} – ${fechaCorta(this.fecha())}`;
   }
 
   cambiarCliente(event: Event): void {
@@ -164,8 +224,59 @@ export class Operacion {
     this.clienteId.set(id || null);
     this.paginaDestinos.set(1);
     this.seleccion.set([]);
-    this.armando.set(false);
-    if (id) this.cargarSedes(id);
+    this.orden.set([]);
+    this.destinosArmado.set([]);
+    this.preview.set(null);
+    this.importacion.set(null);
+    this.archivo = null;
+    this.archivoNombre.set('');
+    this.archivoHora.set('');
+    this.reiniciarAsignacion();
+    if (id) {
+      this.cargarSedes(id);
+      this.cargarCatalogo(id);
+    } else this.catalogo.set(null);
+    this.cargar();
+  }
+
+  fijarAmbito(valor: 'local' | 'provincia'): void {
+    this.ambito.set(valor);
+  }
+
+  exigirCliente(event: Event): void {
+    if (this.clienteId()) return;
+    event.preventDefault();
+    this.error.set('Elige un cliente para importar su Excel.');
+  }
+
+  cambiarAmbito(event: Event): void {
+    this.fijarAmbito((event.target as HTMLSelectElement).value === 'provincia' ? 'provincia' : 'local');
+  }
+
+  cambiarOperacion(): void {
+    this.fijarAmbito(this.ambito() === 'local' ? 'provincia' : 'local');
+  }
+
+  cambiarTipoServicio(event: Event): void {
+    this.tipoServicio.set((event.target as HTMLSelectElement).value);
+  }
+
+  buscarDestinatarios(event: Event): void {
+    this.busqueda.set((event.target as HTMLInputElement).value);
+  }
+
+  verTodos(): void {
+    const dia = hoy();
+    this.fechaDesde.set(dia);
+    this.fecha.set(dia);
+    this.busqueda.set('');
+    this.tipoServicio.set('');
+    this.estadoDestino.set('');
+    this.sinRuta.set(false);
+    this.filtrosAbiertos.set(false);
+    this.paginaDestinos.set(1);
+    this.paginaRutas.set(1);
+    this.seleccion.set([]);
     this.cargar();
   }
 
@@ -196,12 +307,25 @@ export class Operacion {
     this.seleccion.set(marcado ? [...actual, id] : actual.filter((item) => item !== id));
   }
 
+  paginaMarcada(): boolean {
+    const elegibles = this.destinosVisibles().filter((destino) => this.destinoLibre(destino));
+    return elegibles.length > 0 && elegibles.every((destino) => this.seleccion().includes(destino.id));
+  }
+
+  alternarPagina(event: Event): void {
+    const marcado = (event.target as HTMLInputElement).checked;
+    const ids = this.destinosVisibles().filter((destino) => this.destinoLibre(destino)).map((destino) => destino.id);
+    if (marcado) this.seleccion.set([...new Set([...this.seleccion(), ...ids])]);
+    else this.seleccion.set(this.seleccion().filter((id) => !ids.includes(id)));
+  }
+
   nuevoDestino(): void {
     if (!this.clienteId()) {
       this.error.set('Elige un cliente antes de cargar destinos.');
       return;
     }
     this.editando.set(null);
+    this.rutaAccion.set(null);
     this.tipo.set('ENTREGA');
     this.destinoForm.reset({
       codigo_externo: '', fecha: this.fecha(), tipo_servicio: 'ENTREGA', sede_id: '',
@@ -212,12 +336,22 @@ export class Operacion {
   }
 
   editarDestino(destino: Destino): void {
-    if (destino.estado !== 'NO_INICIADO') return;
+    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
+      this.error.set('No se puede editar un destino exitoso o fallido.');
+      return;
+    }
+    if (destino.estado !== 'NO_INICIADO' && destino.estado !== 'EN_PROCESO') {
+      this.error.set('No se puede editar este destino.');
+      return;
+    }
+    this.solicitud += 1;
+    this.error.set('');
+    this.rutaAccion.set(null);
     this.editando.set(destino);
     this.tipo.set(destino.tipo_servicio);
     this.destinoForm.patchValue({
       codigo_externo: destino.codigo_externo,
-      fecha: destino.fecha,
+      fecha: destino.fecha.slice(0, 10),
       tipo_servicio: destino.tipo_servicio,
       sede_id: destino.sede_id ? String(destino.sede_id) : '',
       documento_receptor: destino.documento_receptor,
@@ -233,6 +367,14 @@ export class Operacion {
       observaciones: destino.observaciones,
     });
     this.dialogo.set('destino');
+    if (!destino.ruta_id) return;
+    const ticket = ++this.solicitud;
+    this.api.get<Ruta>(`/api/rutas/${destino.ruta_id}/`).subscribe({
+      next: (ruta) => {
+        if (ticket === this.solicitud && this.editando()?.id === destino.id) this.rutaAccion.set(ruta);
+      },
+      error: () => undefined,
+    });
   }
 
   guardarDestino(): void {
@@ -253,10 +395,6 @@ export class Operacion {
     }
     if (latitud == null || longitud == null) {
       this.error.set('La sede del traslado no tiene coordenadas válidas.');
-      return;
-    }
-    if (raw.fecha < this.fechaMinima) {
-      this.error.set('La fecha no puede ser anterior a hoy.');
       return;
     }
     const cuerpo = {
@@ -281,68 +419,188 @@ export class Operacion {
     this.enviando.set(true);
     const req = id ? this.api.patch<Destino>(`/api/destinos/${id}/`, cuerpo) : this.api.post<Destino>('/api/destinos/', cuerpo);
     req.subscribe({
-      next: () => {
+      next: (guardado) => {
         this.enviando.set(false);
         this.dialogo.set('');
         this.error.set('');
-        this.aviso.set(id ? 'Destino actualizado.' : 'Destino cargado.');
-        this.cargarDestinos();
-      },
-      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
-    });
-  }
-
-  eliminarDestino(destino: Destino): void {
-    if (destino.estado !== 'NO_INICIADO' || destino.ruta_id) return;
-    if (!confirm(`¿Eliminar el destino ${destino.codigo_externo}?`)) return;
-    this.api.delete(`/api/destinos/${destino.id}/`).subscribe({
-      next: () => this.cargarDestinos(),
-      error: (err: unknown) => this.error.set(mensajeError(err)),
-    });
-  }
-
-  abrirReprogramar(destino: Destino): void {
-    if (destino.estado !== 'NO_INICIADO') return;
-    this.editando.set(destino);
-    this.reprogramarForm.patchValue({ fecha: destino.fecha });
-    this.dialogo.set('reprogramar');
-  }
-
-  reprogramar(): void {
-    const destino = this.editando();
-    const fecha = this.reprogramarForm.getRawValue().fecha;
-    if (!destino) return;
-    if (fecha < this.fechaMinima) {
-      this.error.set('La fecha no puede ser anterior a hoy.');
-      return;
-    }
-    this.enviando.set(true);
-    this.api.post<Destino>(`/api/destinos/${destino.id}/reprogramar/`, { fecha }).subscribe({
-      next: () => {
-        this.enviando.set(false);
-        this.dialogo.set('');
-        this.aviso.set('Destino reprogramado. Si estaba en una ruta que no inició, salió de esa ruta.');
+        const mensaje = id
+          ? 'Destino actualizado. Si cambiaste las coordenadas, el mapa de la ruta ya usa el punto nuevo.'
+          : 'Destino cargado.';
+        const rutaId = guardado.ruta_id;
+        if (rutaId && this.rutaAbierta()?.id === rutaId) {
+          this.api.get<Ruta>(`/api/rutas/${rutaId}/`).subscribe({
+            next: (ruta) => {
+              this.rutaAbierta.set(ruta);
+              this.aviso.set(mensaje);
+              this.cargar();
+            },
+            error: (err: unknown) => {
+              this.aviso.set(mensaje);
+              this.error.set(mensajeError(err));
+              this.cargar();
+            },
+          });
+          return;
+        }
+        this.aviso.set(mensaje);
         this.cargar();
       },
       error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
     });
   }
 
-  abrirImportar(): void {
+  abrirInhabilitar(destino: Destino): void {
+    this.error.set('');
+    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
+      this.error.set('No se puede inhabilitar la ruta de un destino exitoso o fallido.');
+      return;
+    }
+    if (!destino.ruta_id) {
+      this.error.set('Este destino todavía no está en una ruta.');
+      return;
+    }
+    const ticket = ++this.solicitud;
+    this.api.get<Ruta>(`/api/rutas/${destino.ruta_id}/`).subscribe({
+      next: (ruta) => {
+        if (ticket !== this.solicitud) return;
+        if (ruta.estado === 'FINALIZADA' || ruta.estado === 'CANCELADA') {
+          this.error.set(ruta.estado === 'FINALIZADA'
+            ? 'No se puede inhabilitar una ruta finalizada.'
+            : 'Esta ruta ya está inhabilitada.');
+          return;
+        }
+        this.rutaAccion.set(ruta);
+        this.editando.set(destino);
+        this.dialogo.set('inhabilitar');
+      },
+      error: (err: unknown) => {
+        if (ticket === this.solicitud) this.error.set(mensajeError(err));
+      },
+    });
+  }
+
+  confirmarInhabilitar(): void {
+    const ruta = this.rutaAccion();
+    if (!ruta || ruta.estado === 'FINALIZADA' || ruta.estado === 'CANCELADA') return;
+    this.enviando.set(true);
+    this.api.post(`/api/rutas/${ruta.id}/cancelar/`, {}).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.dialogo.set('');
+        this.error.set('');
+        this.aviso.set('Ruta inhabilitada. Los destinos quedan libres para otra ruta.');
+        this.cargar();
+        if (this.rutaAbierta()?.id === ruta.id) this.abrirRuta(ruta.id);
+      },
+      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
+    });
+  }
+
+  textoInhabilitar(): string {
+    if (this.rutaAccion()?.estado === 'EN_PROCESO') {
+      return 'Esta ruta ya está en camino. Al inhabilitarla, el conductor dejará de verla y los destinos quedan libres para otra ruta.';
+    }
+    return 'Al inhabilitar la ruta, los destinos quedan libres para otra ruta y el conductor ya no la verá.';
+  }
+
+  abrirEliminar(destino: Destino): void {
+    this.error.set('');
+    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
+      this.error.set('No se puede eliminar un destino exitoso o fallido.');
+      return;
+    }
+    const ticket = ++this.solicitud;
+    if (!destino.ruta_id) {
+      if (destino.estado !== 'NO_INICIADO') {
+        this.error.set('Solo se elimina un destino pendiente que no está en una ruta.');
+        return;
+      }
+      this.rutaAccion.set(null);
+      this.editando.set(destino);
+      this.dialogo.set('eliminar');
+      return;
+    }
+    this.api.get<Ruta>(`/api/rutas/${destino.ruta_id}/`).subscribe({
+      next: (ruta) => {
+        if (ticket !== this.solicitud) return;
+        if (ruta.estado === 'FINALIZADA' || ruta.estado === 'CANCELADA') {
+          this.error.set('No se puede quitar un destino de una ruta finalizada o inhabilitada.');
+          return;
+        }
+        if (ruta.paradas.length < 2) {
+          this.error.set('No se puede quitar la única parada. Inhabilita la ruta si ya no debe continuar.');
+          return;
+        }
+        this.rutaAccion.set(ruta);
+        this.editando.set(destino);
+        this.dialogo.set('eliminar');
+      },
+      error: (err: unknown) => {
+        if (ticket === this.solicitud) this.error.set(mensajeError(err));
+      },
+    });
+  }
+
+  confirmarEliminar(): void {
+    const destino = this.editando();
+    const ruta = this.rutaAccion();
+    if (!destino) return;
+    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') return;
+    this.enviando.set(true);
+    if (ruta) {
+      const destinoIds = ruta.paradas.filter((parada) => parada.destino_id !== destino.id).map((parada) => parada.destino_id);
+      this.api.patch<Ruta>(`/api/rutas/${ruta.id}/`, { destino_ids: destinoIds }).subscribe({
+        next: () => {
+          this.enviando.set(false);
+          this.dialogo.set('');
+          this.error.set('');
+          this.aviso.set('Parada retirada de la ruta. El destino queda libre.');
+          this.cargar();
+          if (this.rutaAbierta()?.id === ruta.id) this.abrirRuta(ruta.id);
+        },
+        error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
+      });
+      return;
+    }
+    this.api.delete(`/api/destinos/${destino.id}/`).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.dialogo.set('');
+        this.error.set('');
+        this.aviso.set('Destino eliminado.');
+        this.seleccion.set(this.seleccion().filter((id) => id !== destino.id));
+        this.cargarDestinos();
+      },
+      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
+    });
+  }
+
+  textoEliminar(): string {
+    const ruta = this.rutaAccion();
+    if (ruta?.estado === 'EN_PROCESO') {
+      return 'Quitar esta parada de una ruta ya iniciada la saca del recorrido en vivo. El conductor dejará de verla.';
+    }
+    if (ruta) return 'La parada saldrá de la ruta y el destino quedará libre. La ruta se conserva.';
+    return 'Se eliminará este destino. No se puede deshacer.';
+  }
+
+  elegirArchivo(event: Event): void {
+    this.marcarArchivo((event.target as HTMLInputElement).files?.[0] ?? null);
+  }
+
+  alArrastrar(event: DragEvent, activo: boolean): void {
+    event.preventDefault();
+    this.arrastrando.set(activo);
+  }
+
+  soltarArchivo(event: DragEvent): void {
+    event.preventDefault();
+    this.arrastrando.set(false);
     if (!this.clienteId()) {
       this.error.set('Elige un cliente para importar su Excel.');
       return;
     }
-    this.archivo = null;
-    this.archivoNombre.set('');
-    this.importacion.set(null);
-    this.dialogo.set('importar');
-  }
-
-  elegirArchivo(event: Event): void {
-    const archivo = (event.target as HTMLInputElement).files?.[0] ?? null;
-    this.archivo = archivo;
-    this.archivoNombre.set(archivo?.name ?? '');
+    this.marcarArchivo(event.dataTransfer?.files?.[0] ?? null);
   }
 
   importar(): void {
@@ -360,7 +618,7 @@ export class Operacion {
         this.enviando.set(false);
         this.importacion.set(resultado);
         this.aviso.set(
-          `Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron. Si el archivo trae otra fecha, elígela arriba para verlos.`,
+          `Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron. Si el archivo trae otra fecha, ajústala en Desde y Hasta para verlos.`,
         );
         this.cargarDestinos();
       },
@@ -375,42 +633,76 @@ export class Operacion {
     });
   }
 
-  abrirArmado(): void {
+  asignarDestinos(): void {
     const clienteId = this.clienteId();
     if (!clienteId || !this.seleccion().length) return;
     const elegidos = this.seleccion().flatMap((id) => {
-      const destino = this.destinos().find((item) => item.id === id);
+      const destino = this.destinos().find((item) => item.id === id) ?? this.destinosArmado().find((item) => item.id === id);
       return destino ? [destino] : [];
     });
     this.destinosArmado.set(elegidos);
     this.orden.set(elegidos.map((destino) => destino.id));
     this.preview.set(null);
-    this.auxiliares.set([]);
-    this.baseOrigenId.set('');
-    this.baseFinalId.set('');
+    this.rutaAbierta.set(null);
+    this.error.set('');
+    this.aviso.set(`${elegidos.length} destinos quedaron listos en ${this.codigoRuta()}. Elige conductor y unidad para guardar o publicar.`);
+    if (!this.catalogo()) this.cargarCatalogo(clienteId);
+  }
+
+  volverAlListado(): void {
+    if (this.rutaAbierta()) {
+      this.rutaAbierta.set(null);
+      this.cargar();
+      return;
+    }
+    this.preview.set(null);
+    this.orden.set([]);
+    this.destinosArmado.set([]);
+    this.seleccion.set([]);
     this.error.set('');
     this.aviso.set('');
-    this.rutaForm.reset({ conductor_id: '', vehiculo_id: '', base_origen_id: '', base_final_id: '' });
-    this.armando.set(true);
-    this.rutaAbierta.set(null);
-    this.catalogos.paraRuta(clienteId).subscribe({
-      next: (catalogo) => this.catalogo.set(catalogo),
-      error: (err: unknown) => this.error.set(mensajeError(err)),
+  }
+
+  guardarBorrador(): void {
+    const cuerpo = this.prepararCuerpo();
+    if (!cuerpo) return;
+    this.enviando.set(true);
+    this.api.post<Ruta>('/api/rutas/', { ...cuerpo, optimizar: false }).subscribe({
+      next: (ruta) => {
+        this.enviando.set(false);
+        this.limpiarTrasGuardar();
+        this.aviso.set('Borrador guardado. Publícalo para que lo vea el conductor.');
+        this.rutaAbierta.set(ruta);
+        this.cargar();
+      },
+      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
     });
   }
 
-  volverArmado(): void {
-    this.armando.set(false);
-    this.preview.set(null);
-    this.error.set('');
-    this.aviso.set('');
-  }
-
-  cambiarBase(cual: 'origen' | 'final', event: Event): void {
-    const valor = (event.target as HTMLSelectElement).value;
-    if (cual === 'origen') this.baseOrigenId.set(valor);
-    else this.baseFinalId.set(valor);
-    this.preview.set(null);
+  publicarProgramacion(): void {
+    const cuerpo = this.prepararCuerpo();
+    if (!cuerpo) return;
+    this.enviando.set(true);
+    this.api.post<Ruta>('/api/rutas/', cuerpo).subscribe({
+      next: (ruta) => {
+        this.api.post(`/api/rutas/${ruta.id}/confirmar/`, {}).subscribe({
+          next: () => {
+            this.enviando.set(false);
+            this.limpiarTrasGuardar();
+            this.aviso.set('Programación publicada. El conductor ya puede ver la ruta.');
+            this.abrirRuta(ruta.id);
+          },
+          error: (err: unknown) => {
+            this.enviando.set(false);
+            this.limpiarTrasGuardar();
+            this.error.set(mensajeError(err));
+            this.rutaAbierta.set(ruta);
+            this.cargar();
+          },
+        });
+      },
+      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
+    });
   }
 
   moverOrden(indice: number, delta: number): void {
@@ -427,6 +719,11 @@ export class Operacion {
   sugerir(): void {
     const clienteId = this.clienteId();
     if (!clienteId) return;
+    if (!this.orden().length) this.asignarDestinos();
+    if (!this.orden().length) {
+      this.error.set('Selecciona al menos un destino para sugerir el orden.');
+      return;
+    }
     this.enviando.set(true);
     const raw = this.rutaForm.getRawValue();
     this.api.post<Optimizacion>('/api/rutas/optimizar/', {
@@ -440,52 +737,10 @@ export class Operacion {
         this.enviando.set(false);
         this.preview.set(resultado);
         this.orden.set(resultado.destino_ids);
-        this.aviso.set('Este orden es una vista previa. La ruta no se publica hasta que la confirmes.');
+        this.aviso.set('Orden sugerido. La ruta sigue en borrador hasta que la publiques.');
       },
       error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
     });
-  }
-
-  guardarBorrador(): void {
-    const clienteId = this.clienteId();
-    const raw = this.rutaForm.getRawValue();
-    const conductorId = idOpcional(raw.conductor_id);
-    const vehiculoId = idOpcional(raw.vehiculo_id);
-    if (!clienteId || !conductorId || !vehiculoId || !this.orden().length) {
-      this.error.set('Elige conductor, vehículo y al menos un destino.');
-      return;
-    }
-    this.enviando.set(true);
-    this.api.post<Ruta>('/api/rutas/', {
-      cliente_id: clienteId,
-      fecha: this.fecha(),
-      conductor_id: conductorId,
-      vehiculo_id: vehiculoId,
-      auxiliar_ids: this.auxiliares(),
-      base_origen_id: idOpcional(raw.base_origen_id),
-      base_final_id: idOpcional(raw.base_final_id),
-      destino_ids: this.orden(),
-      optimizar: false,
-    }).subscribe({
-      next: (ruta) => {
-        this.enviando.set(false);
-        this.armando.set(false);
-        this.seleccion.set([]);
-        this.aviso.set('Borrador guardado. Confírmalo para que lo vea el conductor.');
-        this.rutaAbierta.set(ruta);
-        this.cargar();
-      },
-      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
-    });
-  }
-
-  alternarAuxiliar(id: number, event: Event): void {
-    const marcado = (event.target as HTMLInputElement).checked;
-    const actual = this.auxiliares();
-    if (marcado) {
-      if (actual.length >= 4) return;
-      this.auxiliares.set([...actual, id]);
-    } else this.auxiliares.set(actual.filter((item) => item !== id));
   }
 
   abrirRuta(id: number): void {
@@ -494,10 +749,10 @@ export class Operacion {
         this.error.set('');
         this.aviso.set('');
         this.rutaAbierta.set(ruta);
-        this.armando.set(false);
-        this.fecha.set(ruta.fecha);
+        this.incluirFecha(ruta.fecha);
         this.clienteId.set(ruta.cliente_id);
         this.cargarSedes(ruta.cliente_id);
+        this.cargarCatalogo(ruta.cliente_id);
         this.cargar();
       },
       error: (err: unknown) => this.error.set(mensajeError(err)),
@@ -522,25 +777,115 @@ export class Operacion {
     this.tipo.set(tipo);
   }
 
+  elegirAsignacion(
+    campo: 'conductor_id' | 'vehiculo_id' | 'auxiliar_1' | 'auxiliar_2' | 'base_origen_id' | 'base_final_id',
+    event: Event,
+  ): void {
+    const valor = (event.target as HTMLSelectElement).value;
+    this.rutaForm.controls[campo].setValue(valor);
+    this.sincronizarAsignacion();
+  }
+
+  sincronizarAsignacion(): void {
+    const raw = this.rutaForm.getRawValue();
+    this.conductorId.set(raw.conductor_id);
+    this.vehiculoId.set(raw.vehiculo_id);
+    this.auxiliar1Id.set(raw.auxiliar_1);
+    this.auxiliar2Id.set(raw.auxiliar_2);
+    if (raw.base_origen_id !== this.baseOrigenId() || raw.base_final_id !== this.baseFinalId()) this.preview.set(null);
+    this.baseOrigenId.set(raw.base_origen_id);
+    this.baseFinalId.set(raw.base_final_id);
+  }
+
+  cambiarHora(event: Event): void {
+    this.horaSalida.set((event.target as HTMLInputElement).value);
+  }
+
+  fijarModo(modo: 'manual' | 'optimizacion'): void {
+    this.modoAsignacion.set(modo);
+  }
+
+  exportarDestinos(): void {
+    const filas = this.destinosVisibles();
+    const encabezado = ['Documento', 'Destinatario', 'Dirección', 'Distrito', 'Tipo', 'Estado'];
+    const lineas = [encabezado, ...filas.map((destino) => [
+      this.documentoDestino(destino),
+      this.nombreDestinatario(destino),
+      destino.direccion,
+      destino.distrito,
+      etiquetaTipo(destino.tipo_servicio),
+      this.textoEstado(destino.estado),
+    ])].map((cols) => cols.map((valor) => `"${String(valor).replaceAll('"', '""')}"`).join(',')).join('\n');
+    guardarBlob(new Blob([lineas], { type: 'text/csv;charset=utf-8' }), 'destinatarios.csv');
+  }
+
+  documentoDestino(destino: Destino): string {
+    return destino.documento_receptor || destino.codigo_externo;
+  }
+
+  nombreDestinatario(destino: Destino): string {
+    const nombre = `${destino.nombre_receptor} ${destino.apellido_receptor}`.trim();
+    return nombre || destino.codigo_externo;
+  }
+
+  destinoLibre(destino: Destino): boolean {
+    return destino.estado === 'NO_INICIADO' && !destino.ruta_id;
+  }
+
+  textoEstado(estado: string): string {
+    if (estado === 'NO_INICIADO') return 'Pendiente';
+    return etiquetaEstado(estado);
+  }
+
+  claseEstado(estado: string): string {
+    switch (estado) {
+      case 'NO_INICIADO':
+        return 'prog-pill prog-pill-pendiente';
+      case 'EN_PROCESO':
+        return 'prog-pill prog-pill-proceso';
+      case 'EXITOSO':
+        return 'prog-pill prog-pill-ok';
+      case 'FALLIDO':
+        return 'prog-pill prog-pill-error';
+      default:
+        return 'prog-pill';
+    }
+  }
+
+  iniciales(persona: { nombre: string; apellido: string } | null | undefined): string {
+    if (!persona) return '';
+    return `${persona.nombre.trim()[0] ?? ''}${persona.apellido.trim()[0] ?? ''}`.toUpperCase();
+  }
+
   private cargarDestinos(): void {
     const clienteId = this.clienteId();
     if (!clienteId) return;
     this.api.get<Pagina<Destino>>('/api/destinos/', {
       cliente: clienteId,
-      fecha: this.fecha(),
+      fecha_desde: this.fechaDesde(),
+      fecha_hasta: this.fecha(),
       estado: this.estadoDestino() || undefined,
       sin_ruta: this.sinRuta() ? true : undefined,
       page: this.paginaDestinos(),
-      page_size: this.tamano,
+      page_size: this.tamanoDestinos,
     }).subscribe({
       next: (pagina) => { this.destinos.set(pagina.results); this.totalDestinos.set(pagina.count); },
       error: (err: unknown) => this.error.set(mensajeError(err)),
     });
   }
 
+  private incluirFecha(dia: string): void {
+    const fecha = dia.slice(0, 10);
+    if (!fecha) return;
+    if (fecha < this.fechaDesde()) this.fechaDesde.set(fecha);
+    if (fecha > this.fecha()) this.fecha.set(fecha);
+  }
+
   private cargarRutas(): void {
     this.api.get<Pagina<Ruta>>('/api/rutas/', {
       fecha: this.fecha(),
+      fecha_desde: this.fechaDesde(),
+      fecha_hasta: this.fecha(),
       cliente: this.clienteId() || undefined,
       estado: this.estadoRuta() || undefined,
       page: this.paginaRutas(),
@@ -557,8 +902,85 @@ export class Operacion {
     });
   }
 
-  private baseMarcada(puntos: Punto[], id: string): Punto | null {
-    if (id) return puntos.find((item) => item.id === Number(id)) ?? null;
-    return puntos.find((item) => item.es_principal) ?? null;
+  private cargarCatalogo(clienteId: number): void {
+    this.catalogos.paraRuta(clienteId).subscribe({
+      next: (catalogo) => this.catalogo.set(catalogo),
+      error: (err: unknown) => this.error.set(mensajeError(err)),
+    });
+  }
+
+  private marcarArchivo(archivo: File | null): void {
+    this.archivo = archivo;
+    this.archivoNombre.set(archivo?.name ?? '');
+    this.importacion.set(null);
+    this.verErrores.set(false);
+    if (!archivo) {
+      this.archivoHora.set('');
+      return;
+    }
+    this.archivoHora.set(new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  private reiniciarAsignacion(): void {
+    this.conductorId.set('');
+    this.vehiculoId.set('');
+    this.auxiliar1Id.set('');
+    this.auxiliar2Id.set('');
+    this.horaSalida.set('08:00');
+    this.baseOrigenId.set('');
+    this.baseFinalId.set('');
+    this.rutaForm.reset({
+      conductor_id: '',
+      vehiculo_id: '',
+      auxiliar_1: '',
+      auxiliar_2: '',
+      base_origen_id: '',
+      base_final_id: '',
+    });
+  }
+
+  private limpiarTrasGuardar(): void {
+    this.seleccion.set([]);
+    this.orden.set([]);
+    this.destinosArmado.set([]);
+    this.preview.set(null);
+    this.error.set('');
+  }
+
+  private prepararCuerpo(): {
+    cliente_id: number;
+    fecha: string;
+    conductor_id: number;
+    vehiculo_id: number;
+    auxiliar_ids: number[];
+    base_origen_id: number | null;
+    base_final_id: number | null;
+    destino_ids: number[];
+    optimizar: boolean;
+  } | null {
+    const clienteId = this.clienteId();
+    const raw = this.rutaForm.getRawValue();
+    const conductorId = idOpcional(raw.conductor_id);
+    const vehiculoId = idOpcional(raw.vehiculo_id);
+    const destinoIds = this.orden().length ? this.orden() : this.seleccion();
+    if (!clienteId || !conductorId || !vehiculoId || !destinoIds.length) {
+      this.error.set('Elige cliente, conductor, unidad y al menos un destino.');
+      return null;
+    }
+    const auxiliares = [...new Set([raw.auxiliar_1, raw.auxiliar_2].flatMap((valor) => {
+      const id = idOpcional(valor);
+      return id ? [id] : [];
+    }))];
+    return {
+      cliente_id: clienteId,
+      fecha: this.fecha(),
+      conductor_id: conductorId,
+      vehiculo_id: vehiculoId,
+      auxiliar_ids: auxiliares,
+      base_origen_id: idOpcional(raw.base_origen_id),
+      base_final_id: idOpcional(raw.base_final_id),
+      destino_ids: destinoIds,
+      optimizar: this.modoAsignacion() === 'optimizacion' && !this.preview(),
+    };
   }
 }

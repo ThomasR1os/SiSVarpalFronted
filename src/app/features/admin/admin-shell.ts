@@ -240,7 +240,7 @@ function textoSeccion(url: string): { titulo: string; detalle: string } {
     return { titulo: 'Clientes', detalle: 'Empresas, RUC y dirección principal.' };
   }
   if (url.includes('/admin/programacion') || url.includes('/admin/operacion')) {
-    return { titulo: 'Programación', detalle: 'Confirmas la ruta antes de que la vea el conductor.' };
+    return { titulo: 'Programación', detalle: 'Planifica y asigna rutas por cliente, operación y servicio.' };
   }
   if (url.includes('/admin/seguimiento') || url.includes('/admin/mapa')) {
     return { titulo: 'Seguimiento', detalle: 'Camiones y paradas de rutas ya iniciadas, dentro de Lima.' };

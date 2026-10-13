@@ -56,7 +56,11 @@ export class MapaVivo {
   protected readonly marcas = computed(() => this.armarMarcas());
   protected readonly geometria = computed(() => lineaGeo(this.seleccion()?.geometria));
   protected readonly recorrido = computed(() => (this.seleccion()?.en_vivo ? this.seleccion()?.recorrido ?? [] : []));
-  protected readonly encuadre = computed(() => String(this.seleccion()?.ruta_id ?? 'todas'));
+  protected readonly encuadre = computed(() => {
+    const ruta = this.seleccion();
+    const puntos = ruta?.paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|') ?? '';
+    return `${ruta?.ruta_id ?? 'todas'}-${puntos}`;
+  });
 
   constructor() {
     this.api.get<Geocerca>('/api/geocerca/').subscribe({

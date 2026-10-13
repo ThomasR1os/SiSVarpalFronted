@@ -42,7 +42,7 @@ import { etiquetaZona } from './rutas-cliente';
               <div class="alert alert-warning">El camión se muestra solo mientras la ruta está en proceso, dentro de Lima, y queda alguna parada sin cerrar.</div>
             }
             <div class="mapa-caja">
-              <app-mapa [marcas]="marcas()" [geometria]="geometria()" [recorrido]="recorrido()" [encuadre]="'cliente-' + seguimiento.ruta_id + '-' + seguimiento.en_vivo" />
+              <app-mapa [marcas]="marcas()" [geometria]="geometria()" [recorrido]="recorrido()" [encuadre]="'cliente-' + seguimiento.ruta_id + '-' + seguimiento.paradas.map(p => p.latitud + ',' + p.longitud).join('|')" />
             </div>
             <div class="flex flex-col gap-2">
               @for (parada of seguimiento.paradas; track parada.destino_id) {

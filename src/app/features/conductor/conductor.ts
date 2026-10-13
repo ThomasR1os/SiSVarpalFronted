@@ -507,7 +507,7 @@ export class Conductor {
 }
 
 function firmaRuta(ruta: Ruta): string {
-  const paradas = ruta.paradas.map((p) => `${p.destino_id}:${p.orden}:${p.estado}:${p.hora_estimada}`).join('|');
+  const paradas = ruta.paradas.map((p) => `${p.destino_id}:${p.orden}:${p.estado}:${p.latitud}:${p.longitud}:${p.direccion}:${p.hora_estimada}`).join('|');
   return `${ruta.estado}:${ruta.ultima_posicion_en}:${ruta.vehiculo?.placa}:${ruta.conductor?.id}:${paradas}`;
 }
 

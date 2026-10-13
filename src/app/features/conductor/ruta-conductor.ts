@@ -476,7 +476,10 @@ export class RutaConductor {
     return id == null ? null : (this.paradas().find((p) => p.destino_id === id) ?? null);
   });
   protected readonly geometria = computed(() => lineaGeo(this.ruta().geometria_empresa));
-  protected readonly encuadre = computed(() => `ruta-${this.ruta().id}-${this.centrado()}`);
+  protected readonly encuadre = computed(() => {
+    const puntos = this.ruta().paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|');
+    return `ruta-${this.ruta().id}-${this.centrado()}-${puntos}`;
+  });
   protected readonly marcas = computed(() => {
     const ruta = this.ruta();
     const latitud = ruta.ultima_latitud;
