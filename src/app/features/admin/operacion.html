@@ -259,7 +259,7 @@
 @if (dialogo() === 'importar') {
   <app-modal titulo="Importar destinos" (cerrar)="dialogo.set('')">
     <div class="flex flex-col gap-4">
-      <p class="ayuda">Las filas sin latitud y longitud se rechazan. El resto se carga. Si el cliente usa otros encabezados, configura el mapeo una sola vez en Configuración.</p>
+      <p class="ayuda">Las filas sin latitud y longitud se rechazan. El resto se carga, aunque la fecha sea de un día anterior. Si el cliente usa otros encabezados, configura el mapeo una sola vez en Configuración.</p>
       <input type="file" class="file-input w-full" accept=".xlsx,.xls" (change)="elegirArchivo($event)" />
       @if (archivoNombre()) { <span>{{ archivoNombre() }}</span> }
       <button type="button" class="btn btn-primary" (click)="importar()" [disabled]="enviando()">Cargar archivo</button>

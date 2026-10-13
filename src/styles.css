@@ -308,6 +308,46 @@ app-mapa,
   color: #fff;
   box-shadow: none;
 }
+.erp-side {
+  background: #0b1e3a;
+}
+.drawer-side .erp-nav :where(li > a) {
+  gap: 0.75rem;
+  min-height: 2.65rem;
+  border-radius: 0.7rem;
+  padding-inline: 0.85rem;
+  color: #f7f9fc;
+  font-weight: 500;
+}
+.drawer-side .erp-nav :where(li > a:not(.menu-active)):hover {
+  background: color-mix(in srgb, white 8%, transparent);
+}
+.drawer-side .erp-nav :where(li > .menu-active) {
+  background: #2f80ed;
+  color: #fff;
+  box-shadow: none;
+}
+.erp-colapsar {
+  position: absolute;
+  top: 62%;
+  right: 0.35rem;
+  z-index: 20;
+  display: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 0;
+  background: #fff;
+  color: #0b1e3a;
+  box-shadow: 0 2px 8px rgba(4, 16, 36, 0.28);
+  cursor: pointer;
+}
+@media (min-width: 1024px) {
+  .erp-colapsar {
+    display: grid;
+  }
+}
 .pin-icon {
   background: transparent;
   border: 0;

@@ -359,7 +359,9 @@ export class Operacion {
       next: (resultado) => {
         this.enviando.set(false);
         this.importacion.set(resultado);
-        this.aviso.set(`Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron.`);
+        this.aviso.set(
+          `Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron. Si el archivo trae otra fecha, elígela arriba para verlos.`,
+        );
         this.cargarDestinos();
       },
       error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },

@@ -4,6 +4,7 @@ import { AdminShell } from './features/admin/admin-shell';
 import { Configuracion } from './features/admin/configuracion';
 import { MapaVivo } from './features/admin/mapa-vivo';
 import { Operacion } from './features/admin/operacion';
+import { PanelRuta, SeccionPendiente } from './features/admin/panel-ruta';
 import { ClienteAyuda } from './features/cliente/cliente-ayuda';
 import { ClienteDashboard } from './features/cliente/cliente-dashboard';
 import { ClienteEvidencias } from './features/cliente/cliente-evidencias';
@@ -25,9 +26,20 @@ export const routes: Routes = [
     canActivate: [sesionGuard, rolGuard],
     data: { roles: ['ADMINISTRADOR'] },
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'operacion' },
-      { path: 'operacion', component: Operacion },
-      { path: 'mapa', component: MapaVivo },
+      { path: '', pathMatch: 'full', redirectTo: 'programacion' },
+      { path: 'inicio', component: SeccionPendiente },
+      { path: 'indicadores', component: SeccionPendiente },
+      { path: 'clientes', component: PanelRuta, data: { modulo: 'clientes' } },
+      { path: 'programacion', component: Operacion },
+      { path: 'operacion', pathMatch: 'full', redirectTo: 'programacion' },
+      { path: 'seguimiento', component: MapaVivo },
+      { path: 'mapa', pathMatch: 'full', redirectTo: 'seguimiento' },
+      { path: 'evidencias', component: SeccionPendiente },
+      { path: 'servicios', component: SeccionPendiente },
+      { path: 'planilla', component: SeccionPendiente },
+      { path: 'flota', component: PanelRuta, data: { modulo: 'flota' } },
+      { path: 'usuarios', component: PanelRuta, data: { modulo: 'usuarios' } },
+      { path: 'tickets', component: SeccionPendiente },
       { path: 'configuracion', component: Configuracion },
     ],
   },
