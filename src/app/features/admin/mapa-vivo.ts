@@ -59,7 +59,8 @@ export class MapaVivo {
   protected readonly encuadre = computed(() => {
     const ruta = this.seleccion();
     const puntos = ruta?.paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|') ?? '';
-    return `${ruta?.ruta_id ?? 'todas'}-${puntos}`;
+    const origen = ruta?.base_origen ? `${ruta.base_origen.latitud},${ruta.base_origen.longitud}` : '';
+    return `${ruta?.ruta_id ?? 'todas'}-${origen}-${puntos}`;
   });
 
   constructor() {

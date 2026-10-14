@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Api } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { CatalogoRuta, Catalogos } from '../../core/catalogos';
-import { Destino, Evidencia, Pagina, Ruta } from '../../core/models';
+import { Destino, Evidencia, Pagina, Parada, Ruta } from '../../core/models';
 import {
   distancia,
   duracion,
@@ -18,10 +18,11 @@ import { Modal } from '../../shared/modal';
 import { Mapa } from '../../shared/mapa/mapa';
 import { lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
 import { CerrarParada } from './cerrar-parada';
+import { CorregirCierre } from './corregir-cierre';
 
 @Component({
   selector: 'app-ruta-detalle',
-  imports: [ReactiveFormsModule, Badge, Modal, Mapa, CerrarParada],
+  imports: [ReactiveFormsModule, Badge, Modal, Mapa, CerrarParada, CorregirCierre],
   template: `
     @if (ruta(); as ruta) {
       <article class="flex flex-col gap-4">
@@ -138,7 +139,12 @@ import { CerrarParada } from './cerrar-parada';
                 <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" />
               }
               @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO') {
-                <button type="button" class="btn btn-ghost btn-sm" (click)="verEvidencias(parada.destino_id)">Ver fotos</button>
+                <span class="flex flex-wrap gap-1">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="verEvidencias(parada.destino_id)">Ver fotos</button>
+                  @if (modo() === 'admin') {
+                    <button type="button" class="btn btn-outline btn-sm" (click)="abrirCorreccion(parada)">Corregir cierre</button>
+                  }
+                </span>
                 @if (evidencias()[parada.destino_id]; as fotos) {
                   <div class="fotos">
                     @for (foto of fotos; track foto.id) {
@@ -191,6 +197,9 @@ import { CerrarParada } from './cerrar-parada';
             </div>
           </app-modal>
         }
+        @if (correccion(); as paradaCorregir) {
+          <app-corregir-cierre [parada]="paradaCorregir" (corregida)="alCorregir($event)" (cancelada)="correccion.set(null)" />
+        }
         @if (confirmacion() === 'inhabilitar') {
           <app-modal titulo="Inhabilitar ruta" (cerrar)="confirmacion.set('')">
             <div class="flex flex-col gap-4">
@@ -230,6 +239,7 @@ export class RutaDetalle {
   protected readonly nuevoDestino = signal('');
   protected readonly paradaQuitar = signal<number | null>(null);
   protected readonly confirmacion = signal<'' | 'agregar' | 'quitar' | 'inhabilitar'>('');
+  protected readonly correccion = signal<Parada | null>(null);
   protected readonly error = signal('');
   protected readonly aviso = signal('');
   protected readonly enviando = signal(false);
@@ -250,7 +260,8 @@ export class RutaDetalle {
   protected readonly encuadre = computed(() => {
     const ruta = this.ruta();
     const puntos = ruta.paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|');
-    return `ruta-${ruta.id}-${puntos}`;
+    const origen = ruta.base_origen ? `${ruta.base_origen.latitud},${ruta.base_origen.longitud}` : '';
+    return `ruta-${ruta.id}-${origen}-${puntos}`;
   });
   protected readonly marcas = computed(() => {
     const ruta = this.ruta();
@@ -485,6 +496,18 @@ export class RutaDetalle {
       next: (ruta) => this.cambio.emit(ruta),
       error: (err: unknown) => this.error.set(mensajeError(err)),
     });
+  }
+
+  abrirCorreccion(parada: Parada): void {
+    this.error.set('');
+    this.correccion.set(parada);
+  }
+
+  alCorregir(destinoId: number): void {
+    this.correccion.set(null);
+    this.aviso.set('Cierre corregido. El estado y las fotos quedaron actualizados.');
+    this.verEvidencias(destinoId);
+    this.recargar();
   }
 
   verEvidencias(destinoId: number): void {

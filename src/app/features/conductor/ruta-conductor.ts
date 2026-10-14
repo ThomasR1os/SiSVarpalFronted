@@ -2,8 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { Api } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
-import { Destino, Evidencia, Parada, Ruta } from '../../core/models';
+import { Destino, Evidencia, Pagina, Parada, Punto, Ruta } from '../../core/models';
 import {
+  TAMANO_CATALOGO,
   etiquetaTipo,
   fechaCorta,
   horaCorta,
@@ -13,6 +14,7 @@ import {
   paradasCerradas,
   textoAuxiliares,
 } from '../../core/texto';
+import { Modal } from '../../shared/modal';
 import { Mapa } from '../../shared/mapa/mapa';
 import { lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
 import { CerrarParada } from '../ruta/cerrar-parada';
@@ -90,7 +92,7 @@ function atendida(parada: Parada): boolean {
 
 @Component({
   selector: 'app-ruta-conductor',
-  imports: [NgTemplateOutlet, Mapa, CerrarParada, Icono],
+  imports: [NgTemplateOutlet, Mapa, CerrarParada, Icono, Modal],
   template: `
     @if (ruta(); as ruta) {
       <div class="flex flex-col gap-3">
@@ -209,14 +211,57 @@ function atendida(parada: Parada): boolean {
             </div>
           }
 
-          <div class="grid grid-cols-2 gap-1 rounded-xl bg-base-100 p-1 shadow-sm lg:mx-auto lg:w-96" role="tablist">
-            <button type="button" role="tab" class="btn btn-sm h-10 gap-2 rounded-lg border-0 shadow-none" [class]="modo() === 'listado' ? 'bg-azul text-white' : 'bg-transparent text-base-content/70'" [attr.aria-selected]="modo() === 'listado'" (click)="modo.set('listado')">
-              <app-icono nombre="lista" class="size-5" /> Listado
-            </button>
-            <button type="button" role="tab" class="btn btn-sm h-10 gap-2 rounded-lg border-0 shadow-none" [class]="modo() === 'mapa' ? 'bg-azul text-white' : 'bg-transparent text-base-content/70'" [attr.aria-selected]="modo() === 'mapa'" (click)="modo.set('mapa')">
-              <app-icono nombre="mapa" class="size-5" /> Mapa
-            </button>
+          <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-center">
+            <div class="grid grid-cols-2 gap-1 rounded-xl bg-base-100 p-1 shadow-sm sm:w-96" role="tablist">
+              <button type="button" role="tab" class="btn btn-sm h-10 gap-2 rounded-lg border-0 shadow-none" [class]="modo() === 'listado' ? 'bg-azul text-white' : 'bg-transparent text-base-content/70'" [attr.aria-selected]="modo() === 'listado'" (click)="modo.set('listado')">
+                <app-icono nombre="lista" class="size-5" /> Listado
+              </button>
+              <button type="button" role="tab" class="btn btn-sm h-10 gap-2 rounded-lg border-0 shadow-none" [class]="modo() === 'mapa' ? 'bg-azul text-white' : 'bg-transparent text-base-content/70'" [attr.aria-selected]="modo() === 'mapa'" (click)="modo.set('mapa')">
+                <app-icono nombre="mapa" class="size-5" /> Mapa
+              </button>
+            </div>
+            @if (ruta.estado === 'EN_PROCESO') {
+              <button type="button" class="btn h-12 gap-2 rounded-xl border-0 bg-azul text-white" (click)="abrirTraslado()">
+                <app-icono nombre="pin" class="size-5" /> Agregar traslado
+              </button>
+            }
           </div>
+
+          @if (trasladoAbierto()) {
+            <app-modal titulo="Agregar traslado" (cerrar)="cerrarTraslado()">
+              <form class="flex flex-col gap-4" (ngSubmit)="guardarTraslado()">
+                <div class="alert alert-warning">En una ruta activa solo puedes agregar un traslado. El destino entra al recorrido de esta ruta.</div>
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-sm font-semibold">Tipo de servicio</span>
+                  <select class="select w-full" disabled>
+                    <option>Traslado</option>
+                  </select>
+                </label>
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-sm font-semibold">Sede</span>
+                  <select class="select w-full" [value]="sedeId()" (change)="sedeId.set(valor($event))" required>
+                    <option value="">Elige la sede del cliente</option>
+                    @for (sede of sedes(); track sede.id) {
+                      <option [value]="sede.id">{{ sede.es_principal ? 'Base original · ' : '' }}{{ sede.nombre }} · {{ sede.direccion }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-sm font-semibold">Código</span>
+                  <input class="input w-full" [value]="codigoTraslado()" (input)="codigoTraslado.set(texto($event))" placeholder="Si lo dejas vacío, se genera uno" />
+                </label>
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-sm font-semibold">Motivo</span>
+                  <textarea class="textarea min-h-20 w-full" [value]="motivoTraslado()" (input)="motivoTraslado.set(texto($event))" required placeholder="Por qué se hace este traslado"></textarea>
+                </label>
+                @if (!sedes().length && !cargandoSedes()) {
+                  <div class="alert alert-error">Este cliente no tiene sedes activas para un traslado.</div>
+                }
+                @if (errorTraslado()) { <div class="alert alert-error">{{ errorTraslado() }}</div> }
+                <button type="submit" class="btn btn-primary" [disabled]="enviando() || !sedeId() || !motivoTraslado().trim()">Agregar a la ruta</button>
+              </form>
+            </app-modal>
+          }
 
           @if (modo() === 'listado') {
             <div class="grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
@@ -419,6 +464,13 @@ export class RutaConductor {
   protected readonly enviando = signal(false);
   protected readonly confirmarFinal = signal(false);
   protected readonly errorFinal = signal('');
+  protected readonly trasladoAbierto = signal(false);
+  protected readonly sedes = signal<Punto[]>([]);
+  protected readonly cargandoSedes = signal(false);
+  protected readonly sedeId = signal('');
+  protected readonly codigoTraslado = signal('');
+  protected readonly motivoTraslado = signal('');
+  protected readonly errorTraslado = signal('');
   private readonly dialogoFinal = viewChild<ElementRef<HTMLDialogElement>>('dialogoFinal');
 
   protected readonly paradas = computed(() => [...this.ruta().paradas].sort((a, b) => a.orden - b.orden));
@@ -478,7 +530,9 @@ export class RutaConductor {
   protected readonly geometria = computed(() => lineaGeo(this.ruta().geometria_empresa));
   protected readonly encuadre = computed(() => {
     const puntos = this.ruta().paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|');
-    return `ruta-${this.ruta().id}-${this.centrado()}-${puntos}`;
+    const origen = this.ruta().base_origen;
+    const inicio = origen ? `${origen.latitud},${origen.longitud}` : '';
+    return `ruta-${this.ruta().id}-${this.centrado()}-${inicio}-${puntos}`;
   });
   protected readonly marcas = computed(() => {
     const ruta = this.ruta();
@@ -600,6 +654,72 @@ export class RutaConductor {
     this.focoId.set(null);
     this.aviso.set('Destino cerrado.');
     this.recargar();
+  }
+
+  abrirTraslado(): void {
+    if (this.ruta().estado !== 'EN_PROCESO') return;
+    this.errorTraslado.set('');
+    this.sedeId.set('');
+    this.codigoTraslado.set('');
+    this.motivoTraslado.set('');
+    this.trasladoAbierto.set(true);
+    this.cargandoSedes.set(true);
+    this.api.get<Pagina<Punto>>('/api/puntos/', {
+      cliente: this.ruta().cliente_id,
+      activo: true,
+      page_size: TAMANO_CATALOGO,
+    }).subscribe({
+      next: (pagina) => {
+        const lista = pagina.results
+          .filter((punto) => punto.es_sede || punto.es_principal)
+          .sort((a, b) => Number(b.es_principal) - Number(a.es_principal));
+        this.sedes.set(lista);
+        const base = lista.find((punto) => punto.es_principal) ?? lista[0];
+        this.sedeId.set(base ? String(base.id) : '');
+        this.cargandoSedes.set(false);
+      },
+      error: (err: unknown) => {
+        this.cargandoSedes.set(false);
+        this.errorTraslado.set(mensajeError(err));
+      },
+    });
+  }
+
+  cerrarTraslado(): void {
+    if (!this.enviando()) this.trasladoAbierto.set(false);
+  }
+
+  valor(event: Event): string {
+    return (event.target as HTMLSelectElement).value;
+  }
+
+  texto(event: Event): string {
+    return (event.target as HTMLInputElement | HTMLTextAreaElement).value;
+  }
+
+  guardarTraslado(): void {
+    const sede = Number(this.sedeId());
+    const motivo = this.motivoTraslado().trim();
+    if (!sede || !motivo || this.ruta().estado !== 'EN_PROCESO') return;
+    this.enviando.set(true);
+    this.errorTraslado.set('');
+    this.api.post<Ruta>(`/api/rutas/${this.ruta().id}/traslado/`, {
+      sede_id: sede,
+      codigo_externo: this.codigoTraslado().trim(),
+      motivo_servicio: motivo,
+      tipo_servicio: 'TRASLADO',
+    }).subscribe({
+      next: (ruta) => {
+        this.enviando.set(false);
+        this.trasladoAbierto.set(false);
+        this.aviso.set('Traslado agregado a la ruta.');
+        this.cambio.emit(ruta);
+      },
+      error: (err: unknown) => {
+        this.enviando.set(false);
+        this.errorTraslado.set(mensajeError(err));
+      },
+    });
   }
 
   iniciar(): void {

@@ -1,40 +1,15 @@
 <div class="prog">
   <header class="prog-encabezado">
     <div>
-      <p class="prog-miga">Programación <span aria-hidden="true">›</span> Programación operativa</p>
-      <h1>Programación operativa</h1>
-      <p>Planifica y asigna rutas de distribución por cliente, operación y servicio.</p>
+      <p class="prog-miga">Programación <span aria-hidden="true">›</span> Operativa</p>
+      <h1>Programación</h1>
+      <p>Carga los destinatarios, elige quién los lleva y publica la ruta.</p>
+    </div>
+    <div class="prog-chip" [class.lista]="!clienteId()">
+      <span>{{ clienteId() ? nombreCliente() : 'Sin cliente' }}</span>
+      <strong>{{ etiquetaAmbito() }}</strong>
     </div>
   </header>
-
-  <section class="prog-resumen" aria-label="Contexto de la programación">
-    <article class="prog-card prog-metodologia">
-      <span class="prog-icono-ok" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 18h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.7-1.5A3.5 3.5 0 0 0 7 18z" /><path stroke-linecap="round" stroke-linejoin="round" d="m9.2 12.2 1.8 1.8 3.8-3.8" /></svg>
-      </span>
-      <div>
-        <p class="prog-kicker">Metodología cargada</p>
-        <strong>{{ clienteId() ? nombreCliente() + ' - ' + etiquetaAmbito() : 'Elige un cliente' }}</strong>
-      </div>
-      @if (clienteId()) {
-        <span class="prog-check" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 5 5L20 7" /></svg>
-        </span>
-      }
-    </article>
-    <article class="prog-card prog-contexto">
-      <p><span>Cliente</span><strong>{{ nombreCliente() }}</strong></p>
-      <p><span>Operación</span><strong>{{ etiquetaAmbito() }}</strong></p>
-    </article>
-    <div class="prog-segmento" role="group" aria-label="Tipo de operación">
-      <button type="button" [class.activo]="ambito() === 'local'" (click)="fijarAmbito('local')">Local</button>
-      <button type="button" [class.activo]="ambito() === 'provincia'" (click)="fijarAmbito('provincia')">Provincia</button>
-    </div>
-    <button type="button" class="prog-cambiar" (click)="cambiarOperacion()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h11M4 12h16M4 17h9" /></svg>
-      Cambiar operación
-    </button>
-  </section>
 
   <section class="prog-card prog-filtros">
     <label class="prog-campo">Cliente
@@ -48,20 +23,12 @@
         </select>
       </span>
     </label>
-    <label class="prog-campo">Cuenta
-      <select disabled>
-        <option>Todas las cuentas</option>
-      </select>
-    </label>
-    <label class="prog-campo">Operación
-      <span class="prog-select-marca">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" /><circle cx="12" cy="10" r="2.2" /></svg>
-        <select [value]="ambito()" (change)="cambiarAmbito($event)">
-          <option value="local">Local</option>
-          <option value="provincia">Provincia</option>
-        </select>
-      </span>
-    </label>
+    <div class="prog-campo">Operación
+      <div class="prog-segmento" role="group" aria-label="Tipo de operación">
+        <button type="button" [class.activo]="ambito() === 'local'" (click)="fijarAmbito('local')">Local</button>
+        <button type="button" [class.activo]="ambito() === 'provincia'" (click)="fijarAmbito('provincia')">Provincia</button>
+      </div>
+    </div>
     <label class="prog-campo">Desde
       <input type="date" [value]="fechaDesde()" [max]="fecha()" (change)="cambiarDesde($event)" />
     </label>
@@ -91,65 +58,74 @@
       <app-ruta-detalle [ruta]="ruta" modo="admin" (cambio)="actualizarRuta($event)" (cerrada)="volverAlListado()" />
     </section>
   } @else {
-    <div class="prog-grid">
-      <section class="prog-card prog-col">
-        <h2>1. Cargar archivo Excel</h2>
-        <label class="prog-drop" [class.activa]="arrastrando()" (click)="exigirCliente($event)" (dragover)="alArrastrar($event, true)" (dragleave)="alArrastrar($event, false)" (drop)="soltarArchivo($event)">
+    <section class="prog-card prog-carga">
+      <label class="prog-drop" [class.activa]="arrastrando()" (click)="exigirCliente($event)" (dragover)="alArrastrar($event, true)" (dragleave)="alArrastrar($event, false)" (drop)="soltarArchivo($event)">
           <input class="sr-only" type="file" accept=".xlsx,.xls" (change)="elegirArchivo($event)" />
           <span class="prog-drop-icono" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3.5h6.2L19 8.2V20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" /><path stroke-linecap="round" d="M14 3.5V8h4.5M9 13h6M9 16.5h4" /></svg>
           </span>
-          <strong>Arrastra tu archivo Excel aquí</strong>
-          <span>o haz clic para seleccionar</span>
-          <small>Formatos aceptados: .xlsx, .xls<br />Máx. 10 MB</small>
+          <strong>Suelta el Excel aquí</strong>
+          <span>o haz clic para elegirlo · .xlsx, .xls</span>
         </label>
-        <button type="button" class="prog-link" (click)="descargarPlantilla()">Descargar plantilla</button>
-        @if (archivoNombre()) {
-          <div class="prog-archivo">
-            <span class="prog-archivo-icono" aria-hidden="true">X</span>
-            <span>
-              <strong>{{ archivoNombre() }}</strong>
-              <small>Cargado hoy {{ archivoHora() }}</small>
-            </span>
+        <div class="prog-carga-lado">
+          <div class="prog-carga-texto">
+            <h2>1. Cargar destinatarios</h2>
+            <p>Usa la plantilla si el archivo aún no tiene el formato de Varpal.</p>
           </div>
-        }
-        @if (resumenCarga(); as carga) {
-          <div class="prog-validacion">
-            <p class="prog-validacion-titulo"><span aria-hidden="true">✓</span> Validación completada</p>
-            <p>Se procesaron {{ carga.validos + carga.errores }} registros</p>
-            <ul>
-              <li><span class="prog-punto ok">✓</span> Registros válidos <strong>{{ carga.validos }}</strong></li>
-              <li><span class="prog-punto error">!</span> Errores de validación <strong>{{ carga.errores }}</strong></li>
-              <li><span class="prog-punto aviso">!</span> Sin geocodificar <strong>{{ carga.sinGeo }}</strong></li>
-              <li><span class="prog-punto dup">⧉</span> Duplicados <strong>{{ carga.duplicados }}</strong></li>
-            </ul>
+          <div class="prog-carga-acciones">
+            <button type="button" class="prog-link" (click)="descargarPlantilla()">Descargar plantilla</button>
+            <button type="button" class="prog-btn" (click)="importar()" [disabled]="enviando() || !archivoNombre()">Validar registros</button>
+            <button type="button" class="prog-btn prog-btn-linea" (click)="verErrores.set(!verErrores())" [disabled]="!resumenCarga()?.errores">
+              {{ verErrores() ? 'Ocultar errores' : 'Ver errores' }}
+            </button>
           </div>
-        }
-        <button type="button" class="prog-btn" (click)="importar()" [disabled]="enviando() || !archivoNombre()">Validar registros</button>
-        <button type="button" class="prog-btn prog-btn-linea" (click)="verErrores.set(!verErrores())" [disabled]="!resumenCarga()?.errores">
-          {{ verErrores() ? 'Ocultar detalle de errores' : 'Ver detalle de errores' }}
-        </button>
-        @if (verErrores() && importacion(); as resultado) {
-          <div class="data-table prog-errores">
-            <table class="table table-xs">
-              <thead><tr><th>Fila</th><th>Errores</th></tr></thead>
-              <tbody>
-                @for (fila of resultado.rechazados; track fila.fila) {
-                  <tr><td data-label="Fila">{{ fila.fila }}</td><td data-label="Errores">{{ fila.errores.join(' ') }}</td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      </section>
+          @if (archivoNombre()) {
+            <div class="prog-archivo">
+              <span class="prog-archivo-icono" aria-hidden="true">X</span>
+              <span>
+                <strong>{{ archivoNombre() }}</strong>
+                <small>Cargado hoy {{ archivoHora() }}</small>
+              </span>
+            </div>
+          }
+          @if (resumenCarga(); as carga) {
+            <div class="prog-validacion">
+              <p class="prog-validacion-titulo"><span aria-hidden="true">✓</span> Validación completada</p>
+              <p>Se procesaron {{ carga.validos + carga.errores }} registros</p>
+              <ul>
+                <li><span class="prog-punto ok">✓</span> Registros válidos <strong>{{ carga.validos }}</strong></li>
+                <li><span class="prog-punto error">!</span> Errores de validación <strong>{{ carga.errores }}</strong></li>
+                <li><span class="prog-punto aviso">!</span> Sin geocodificar <strong>{{ carga.sinGeo }}</strong></li>
+                <li><span class="prog-punto dup">⧉</span> Duplicados <strong>{{ carga.duplicados }}</strong></li>
+              </ul>
+            </div>
+          }
+          @if (verErrores() && importacion(); as resultado) {
+            <div class="data-table prog-errores">
+              <table class="table table-xs">
+                <thead><tr><th>Fila</th><th>Errores</th></tr></thead>
+                <tbody>
+                  @for (fila of resultado.rechazados; track fila.fila) {
+                    <tr><td data-label="Fila">{{ fila.fila }}</td><td data-label="Errores">{{ fila.errores.join(' ') }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+    </section>
 
+    <div class="prog-grid">
       <section class="prog-card prog-col prog-tabla-col">
         <div class="prog-col-head">
-          <h2>2. Destinatarios a programar <span>({{ totalDestinos() }} registros, {{ etiquetaRango() }})</span></h2>
-          <button type="button" class="prog-link" (click)="verTodos()">Ver todos</button>
+          <div>
+            <h2>2. Destinatarios</h2>
+            <p>{{ totalDestinos() }} en {{ etiquetaRango() }}. Marca los que irán en la ruta.</p>
+          </div>
+          <button type="button" class="prog-link" (click)="verTodos()">Limpiar filtros</button>
         </div>
         @if (!clienteId()) {
-          <p class="vacio-texto">Elige un cliente para ver y cargar sus destinos.</p>
+          <p class="vacio-texto">Elige un cliente arriba para ver sus destinatarios.</p>
         } @else {
           <div class="prog-tabla-tools">
             <label class="prog-buscar">
@@ -189,9 +165,8 @@
                   <th>Destinatario</th>
                   <th>Dirección</th>
                   <th>Distrito</th>
-                  <th>Ventana horaria</th>
                   <th>Estado</th>
-                  <th></th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,26 +182,28 @@
                     <td data-label="Destinatario">{{ nombreDestinatario(destino) }}</td>
                     <td data-label="Dirección">{{ destino.direccion }}</td>
                     <td data-label="Distrito">{{ destino.distrito }}</td>
-                    <td data-label="Ventana horaria">Por confirmar</td>
                     <td data-label="Estado"><span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span></td>
                     <td class="acciones" data-label="Acciones">
                       @if (destino.estado === 'NO_INICIADO' || destino.estado === 'EN_PROCESO') {
                         <div class="prog-acciones">
-                          <button type="button" class="prog-icono" aria-label="Editar" title="Editar" (click)="editarDestino(destino)">
+                          <button type="button" class="prog-accion" (click)="editarDestino(destino)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20h4.2L19.4 8.8a1.6 1.6 0 0 0 0-2.3l-1.9-1.9a1.6 1.6 0 0 0-2.3 0L4 15.8V20z" /><path stroke-linecap="round" d="M13.5 6.3 17.7 10.5" /></svg>
+                            Editar
                           </button>
-                          <button type="button" class="prog-icono" aria-label="Inhabilitar ruta" title="Inhabilitar ruta" (click)="abrirInhabilitar(destino)">
+                          <button type="button" class="prog-accion" (click)="abrirInhabilitar(destino)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path stroke-linecap="round" d="m7.5 7.5 9 9" /></svg>
+                            Inhabilitar
                           </button>
-                          <button type="button" class="prog-icono peligro" aria-label="Eliminar" title="Eliminar" (click)="abrirEliminar(destino)">
+                          <button type="button" class="prog-accion peligro" (click)="abrirEliminar(destino)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M5 7.5h14" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 7.4V5.8A1.3 1.3 0 0 1 10.8 4.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.6M8 7.5l.7 11.2a1.2 1.2 0 0 0 1.2 1.1h4.2a1.2 1.2 0 0 0 1.2-1.1L16 7.5" /></svg>
+                            Quitar
                           </button>
                         </div>
                       }
                     </td>
                   </tr>
                 } @empty {
-                  <tr class="fila-vacia"><td colspan="9">No hay destinatarios para este filtro ({{ etiquetaRango() }}).</td></tr>
+                  <tr class="fila-vacia"><td colspan="8">No hay destinatarios entre {{ etiquetaRango() }}. Prueba otro rango o limpia los filtros.</td></tr>
                 }
               </tbody>
             </table>
@@ -237,7 +214,10 @@
 
       <section class="prog-card prog-col">
         <div class="prog-col-head">
-          <h2>3. Asignación de ruta y recursos</h2>
+          <div>
+            <h2>3. Armar la ruta</h2>
+            <p>Elige conductor y unidad. Luego asigna los destinatarios marcados.</p>
+          </div>
         </div>
         <div class="prog-modos" role="group" aria-label="Modo de asignación">
           <button type="button" [class.activo]="modoAsignacion() === 'manual'" (click)="fijarModo('manual')">Asignación manual</button>
@@ -341,51 +321,64 @@
           </ol>
         }
         <aside class="prog-reglas">
-          <p><span aria-hidden="true">i</span> Reglas del cliente</p>
-          <strong>{{ clienteId() ? nombreCliente() + ' - ' + etiquetaAmbito() : 'Programación' }}: programación por ruta</strong>
+          <p>Antes de publicar</p>
           <ul>
-            <li>Agrupación por cliente y por fecha.</li>
-            <li>Geocodificación obligatoria al cargar el Excel.</li>
-            <li>El borrador no llega al conductor hasta publicar.</li>
-            <li>Priorizar sedes y puntos con coordenadas válidas.</li>
+            <li>La ruta agrupa un solo cliente y el rango de fechas elegido.</li>
+            <li>Cada fila del Excel necesita coordenadas.</li>
+            <li>El conductor ve la ruta solo cuando la publicas.</li>
           </ul>
         </aside>
       </section>
     </div>
 
     <section class="prog-card prog-rutas">
-      <button type="button" class="prog-rutas-toggle" (click)="verRutas.set(!verRutas())">
-        <span>Rutas del {{ etiquetaRango() }} ({{ totalRutas() }})</span>
-        <span>{{ verRutas() ? 'Ocultar' : 'Ver listado' }}</span>
-      </button>
-      @if (verRutas()) {
-        <div class="prog-rutas-cuerpo">
-          <label class="prog-campo">Estado
-            <select [value]="estadoRuta()" (change)="cambiarEstadoRuta($event)">
-              <option value="">Todas</option>
-              <option value="BORRADOR">Borrador</option>
-              <option value="NO_INICIADA">No iniciada</option>
-              <option value="EN_PROCESO">En proceso</option>
-              <option value="FINALIZADA">Finalizada</option>
-              <option value="CANCELADA">Cancelada</option>
-            </select>
-          </label>
-          <div class="lista-rutas">
-            @for (ruta of rutas(); track ruta.id) {
-              <button type="button" class="ruta-card" (click)="abrirRuta(ruta.id)">
-                <span class="flex flex-wrap items-center gap-2"><strong>#{{ ruta.id }} {{ ruta.cliente_nombre }}</strong><app-badge [estado]="ruta.estado" /></span>
-                <span class="ayuda">{{ nombrePersona(ruta.conductor) }} · {{ ruta.vehiculo?.placa || 'sin vehículo' }} · {{ ruta.paradas.length }} paradas</span>
-              </button>
-            } @empty { <p class="vacio-texto">No hay rutas para este filtro.</p> }
-          </div>
-          <app-paginacion [pagina]="paginaRutas()" [tamano]="tamano" [total]="totalRutas()" (paginaChange)="irRutas($event)" />
+      <div class="prog-rutas-head">
+        <div>
+          <h2>Rutas</h2>
+          <p>{{ etiquetaRango() }} · {{ totalRutas() }} {{ totalRutas() === 1 ? 'ruta' : 'rutas' }}</p>
         </div>
+        <div class="prog-rutas-tools">
+          @if (verRutas()) {
+            <label class="prog-campo prog-campo-corto">Estado
+              <select [value]="estadoRuta()" (change)="cambiarEstadoRuta($event)">
+                <option value="">Todas</option>
+                <option value="BORRADOR">Borrador</option>
+                <option value="NO_INICIADA">No iniciada</option>
+                <option value="EN_PROCESO">En proceso</option>
+                <option value="FINALIZADA">Finalizada</option>
+                <option value="CANCELADA">Cancelada</option>
+              </select>
+            </label>
+          }
+          <button type="button" class="prog-link" (click)="verRutas.set(!verRutas())">
+            {{ verRutas() ? 'Ocultar' : 'Ver listado' }}
+          </button>
+        </div>
+      </div>
+      @if (verRutas()) {
+        <div class="lista-rutas prog-lista-rutas">
+          @for (ruta of rutas(); track ruta.id) {
+            <button type="button" class="prog-ruta" (click)="abrirRuta(ruta.id)">
+              <span class="prog-ruta-id">#{{ ruta.id }}</span>
+              <span class="prog-ruta-datos">
+                <strong>{{ ruta.cliente_nombre }}</strong>
+                <span>{{ nombrePersona(ruta.conductor) }} · {{ ruta.vehiculo?.placa || 'Sin vehículo' }} · {{ ruta.paradas.length }} paradas</span>
+              </span>
+              <app-badge [estado]="ruta.estado" />
+              <span class="prog-ruta-abrir">Abrir</span>
+            </button>
+          } @empty { <p class="vacio-texto">No hay rutas en este rango.</p> }
+        </div>
+        <app-paginacion [pagina]="paginaRutas()" [tamano]="tamano" [total]="totalRutas()" (paginaChange)="irRutas($event)" />
       }
     </section>
   }
 
   <footer class="prog-pie">
-    <button type="button" class="btn btn-ghost" (click)="volverAlListado()">← Volver al listado</button>
+    <div class="prog-pie-nota">
+      <button type="button" class="btn btn-ghost" (click)="volverAlListado()">Volver</button>
+      <span>{{ seleccion().length ? seleccion().length + ' destinatarios marcados' : 'Marca destinatarios para armar la ruta' }}</span>
+    </div>
     <div class="prog-pie-acciones">
       <button type="button" class="prog-btn prog-btn-linea" (click)="guardarBorrador()" [disabled]="enviando() || !!rutaAbierta()">Guardar borrador</button>
       <button type="button" class="prog-btn prog-btn-linea" (click)="asignarDestinos()" [disabled]="enviando() || !seleccion().length || !!rutaAbierta()">Asignar destinos</button>

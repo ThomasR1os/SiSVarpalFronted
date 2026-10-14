@@ -8,7 +8,12 @@ import { Icono } from '../conductor/icono';
 
 const MAX_FOTOS = 10;
 const MAX_COMENTARIO = 500;
-const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+const TIPOS_FOTO = ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp'];
+
+function esFoto(archivo: File): boolean {
+  if (TIPOS_FOTO.includes(archivo.type)) return true;
+  return /\.(jpe?g|png|webp)$/i.test(archivo.name);
+}
 
 @Component({
   selector: 'app-cerrar-parada',
@@ -47,20 +52,20 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
                 <button type="button" class="btn btn-circle btn-xs absolute top-1 right-1 border-0 bg-base-100/90" (click)="quitarFoto(i)" aria-label="Quitar foto">✕</button>
               </div>
             }
-            @if (vistas().length < maxFotos) {
-              <label class="grid aspect-square cursor-pointer place-items-center rounded-xl border-2 border-dashed border-azul/40 bg-base-100 text-azul">
-                <app-icono nombre="camara" class="size-7" />
-                <input type="file" class="hidden" accept="image/jpeg,image/png,image/webp" capture="environment" multiple (change)="elegirFotos($event)" />
-              </label>
-            }
           </div>
-        } @else {
-          <label class="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-azul/35 bg-base-100 px-4 py-7 text-center transition hover:border-azul/60">
-            <app-icono nombre="camara" class="size-10 text-base-content/50" />
-            <span class="mt-1 text-sm font-semibold">Tomar o subir fotografía</span>
-            <span class="text-xs text-base-content/55">Mínimo 1, máximo {{ maxFotos }} · JPG, PNG o WEBP</span>
-            <input type="file" class="hidden" accept="image/jpeg,image/png,image/webp" capture="environment" multiple (change)="elegirFotos($event)" />
-          </label>
+        }
+        @if (vistas().length < maxFotos) {
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label class="btn h-auto min-h-12 whitespace-normal rounded-xl border-azul/30 bg-base-100">
+              <app-icono nombre="servicio" class="size-5" /> Buscar en archivos
+              <input type="file" class="hidden" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple (change)="elegirFotos($event)" />
+            </label>
+            <label class="btn h-auto min-h-12 whitespace-normal rounded-xl border-0 bg-azul text-white">
+              <app-icono nombre="camara" class="size-5" /> Tomar foto
+              <input type="file" class="hidden" accept="image/jpeg,image/png,image/webp" capture="environment" (change)="elegirFotos($event)" />
+            </label>
+          </div>
+          <p class="text-center text-xs text-base-content/55">Mínimo 1, máximo {{ maxFotos }} · JPG, PNG o WEBP</p>
         }
       </div>
 
@@ -154,7 +159,7 @@ export class CerrarParada {
     const campo = event.target as HTMLInputElement;
     const nuevos = Array.from(campo.files ?? []);
     campo.value = '';
-    if (nuevos.some((archivo) => !TIPOS_FOTO.includes(archivo.type))) {
+    if (nuevos.some((archivo) => !esFoto(archivo))) {
       this.error.set('Las fotos deben ser JPG, PNG o WEBP.');
       return;
     }
