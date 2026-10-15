@@ -89,6 +89,7 @@ const POR_PAGINA = 10;
             <option value="">Todos</option>
             <option value="NO_INICIADO">No iniciado</option>
             <option value="EN_PROCESO">En proceso</option>
+            <option value="PENDIENTE">Evidencia pendiente</option>
             <option value="EXITOSO">Exitoso</option>
             <option value="FALLIDO">Fallido</option>
           </select>
@@ -268,7 +269,7 @@ export class ClienteReporte {
 
   cambiarEstado(evento: Event): void {
     const valor = (evento.target as HTMLSelectElement).value;
-    if (valor === '' || valor === 'NO_INICIADO' || valor === 'EN_PROCESO' || valor === 'EXITOSO' || valor === 'FALLIDO') {
+    if (valor === '' || valor === 'NO_INICIADO' || valor === 'EN_PROCESO' || valor === 'PENDIENTE' || valor === 'EXITOSO' || valor === 'FALLIDO') {
       this.estado.set(valor);
     }
     this.pagina.set(1);

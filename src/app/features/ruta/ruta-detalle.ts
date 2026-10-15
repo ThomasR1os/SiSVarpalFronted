@@ -150,7 +150,7 @@ import { CorregirCierre } from './corregir-cierre';
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, 1)" [disabled]="indice === paradasLocal().length - 1">Bajar</button>
                     }
                     @if (puedeParadas()) {
-                      <button type="button" class="btn btn-error btn-outline btn-sm" (click)="pedirQuitar(parada.destino_id)" [disabled]="paradasLocal().length < 2 || paradaCerrada(parada.estado)">Quitar</button>
+                      <button type="button" class="btn btn-error btn-outline btn-sm" (click)="pedirQuitar(parada.destino_id)" [disabled]="paradasLocal().length < 2">Quitar</button>
                     }
                   </span>
                 }
@@ -160,7 +160,7 @@ import { CorregirCierre } from './corregir-cierre';
               @if (parada.estado === 'EN_PROCESO' && (modo() === 'admin' || modo() === 'conductor')) {
                 <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" />
               }
-              @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO') {
+              @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'PENDIENTE') {
                 <span class="flex flex-wrap gap-1">
                   <button type="button" class="btn btn-ghost btn-sm" (click)="verEvidencias(parada.destino_id)">Ver fotos</button>
                   @if (modo() === 'admin') {
@@ -404,10 +404,6 @@ export class RutaDetalle {
     });
   }
 
-  paradaCerrada(estado: string): boolean {
-    return estado === 'EXITOSO' || estado === 'FALLIDO';
-  }
-
   pedirAgregar(): void {
     if (!this.puedeParadas() || !Number(this.nuevoDestino())) return;
     this.error.set('');
@@ -432,10 +428,7 @@ export class RutaDetalle {
 
   pedirQuitar(destinoId: number): void {
     const parada = this.paradasLocal().find((item) => item.destino_id === destinoId);
-    if (!this.puedeParadas() || !parada || this.paradaCerrada(parada.estado)) {
-      this.error.set('No se puede quitar un destino exitoso o fallido.');
-      return;
-    }
+    if (!this.puedeParadas() || !parada) return;
     if (this.paradasLocal().length < 2) {
       this.error.set('No se puede quitar la única parada de la ruta.');
       return;
@@ -469,6 +462,12 @@ export class RutaDetalle {
   }
 
   textoQuitar(): string {
+    const id = this.paradaQuitar();
+    const parada = this.paradasLocal().find((item) => item.destino_id === id);
+    const cerrado = parada?.estado === 'EXITOSO' || parada?.estado === 'FALLIDO' || parada?.estado === 'PENDIENTE';
+    if (cerrado) {
+      return 'Esta parada ya tiene un cierre. Al quitarla sale de la ruta y el destino vuelve a quedar libre, sin ese resultado.';
+    }
     if (this.ruta().estado === 'EN_PROCESO') {
       return 'Quitar esta parada la saca de la ruta en vivo. El conductor ya no la verá en el recorrido.';
     }

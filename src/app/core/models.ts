@@ -1,6 +1,6 @@
 export type Rol = 'ADMINISTRADOR' | 'CONDUCTOR' | 'AUXILIAR' | 'CLIENTE';
 
-export type EstadoDestino = 'NO_INICIADO' | 'EN_PROCESO' | 'EXITOSO' | 'FALLIDO';
+export type EstadoDestino = 'NO_INICIADO' | 'EN_PROCESO' | 'PENDIENTE' | 'EXITOSO' | 'FALLIDO';
 
 export type EstadoRuta = 'BORRADOR' | 'NO_INICIADA' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA';
 

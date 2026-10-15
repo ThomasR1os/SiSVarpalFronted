@@ -518,7 +518,9 @@ Devuelve el destino actualizado.
 
 ### POST `/api/destinos/{id}/cerrar/`
 
-`multipart/form-data`. Lo hace el conductor o un auxiliar de esa ruta, o un administrador. El destino debe estar `EN_PROCESO`. Mínimo 1 foto y máximo 10. JPG, PNG o WEBP.
+`multipart/form-data`. Lo hace el conductor o un auxiliar de esa ruta, o un administrador. El destino debe estar `EN_PROCESO` o `PENDIENTE`. Mínimo 1 foto y máximo 10. JPG, PNG o WEBP.
+
+`PENDIENTE` es una parada ya visitada cuyas evidencias todavía se pueden entregar. Se asigna al corregir un cierre. No cierra la ruta: para finalizarla, cada parada tiene que quedar `EXITOSO` o `FALLIDO`.
 
 | Campo | Regla |
 |---|---|

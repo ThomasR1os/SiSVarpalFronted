@@ -142,8 +142,11 @@ function atendida(parada: Parada): boolean {
               }
             </section>
 
-            @if (parada.estado === 'EN_PROCESO') {
+            @if (parada.estado === 'EN_PROCESO' || parada.estado === 'PENDIENTE') {
               <section class="cd-card">
+                @if (parada.estado === 'PENDIENTE') {
+                  <p class="text-sm text-base-content/70">Esta parada está pendiente. Sube las evidencias para cerrarla.</p>
+                }
                 <app-cerrar-parada [parada]="parada" (cerrado)="paradaCerrada()" />
               </section>
             } @else if (atendida(parada)) {
@@ -595,6 +598,9 @@ export class RutaConductor {
     }
     if (parada.estado === 'FALLIDO') {
       return { texto: 'Fallido', chip: 'bg-red-50 text-red-700', circulo: 'bg-red-100 text-red-700', icono: 'x-circulo' };
+    }
+    if (parada.estado === 'PENDIENTE') {
+      return { texto: 'Evidencia pendiente', chip: 'bg-amber-50 text-amber-700', circulo: 'bg-amber-100 text-amber-700', icono: 'camara' };
     }
     return { texto: 'Pendiente', chip: 'bg-amber-50 text-amber-700', circulo: 'bg-amber-100 text-amber-700', icono: 'reloj' };
   }

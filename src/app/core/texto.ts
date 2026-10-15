@@ -32,6 +32,7 @@ const ESTADOS_RUTA: Record<EstadoRuta, string> = {
 const ESTADOS_DESTINO: Record<EstadoDestino, string> = {
   NO_INICIADO: 'No iniciado',
   EN_PROCESO: 'En proceso',
+  PENDIENTE: 'Evidencia pendiente',
   EXITOSO: 'Exitoso',
   FALLIDO: 'Fallido',
 };

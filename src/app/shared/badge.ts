@@ -12,6 +12,8 @@ export class Badge {
     switch (this.estado()) {
       case 'EN_PROCESO':
         return 'badge badge-sm badge-info whitespace-nowrap';
+      case 'PENDIENTE':
+        return 'badge badge-sm badge-warning whitespace-nowrap';
       case 'EXITOSO':
       case 'FINALIZADA':
         return 'badge badge-sm badge-success whitespace-nowrap';

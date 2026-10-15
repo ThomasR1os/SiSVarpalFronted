@@ -16,7 +16,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
     <app-modal titulo="Corregir cierre" (cerrar)="cancelar()">
       <form class="flex flex-col gap-4" [formGroup]="form" (ngSubmit)="guardar()">
         <div class="alert alert-warning">
-          El conductor marcó esta parada como {{ parada().estado === 'FALLIDO' ? 'fallida' : 'exitosa' }}.
+          {{ avisoEstado() }}
           Aquí puedes cambiar el estado y las fotos si la revisión del administrador no coincide con ese cierre.
         </div>
         <p><strong>{{ parada().codigo_externo }}</strong> · {{ parada().direccion }}</p>
@@ -26,8 +26,12 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
           <select class="select w-full" formControlName="resultado">
             <option value="EXITOSO">Exitoso</option>
             <option value="FALLIDO">Fallido</option>
+            <option value="PENDIENTE">Pendiente</option>
           </select>
         </label>
+        @if (form.controls.resultado.value === 'PENDIENTE') {
+          <p class="ayuda">La parada queda pendiente. Las evidencias se pueden entregar después, con o sin fotos por ahora.</p>
+        }
 
         @if (form.controls.resultado.value === 'FALLIDO') {
           <label class="flex flex-col gap-1.5">
@@ -50,7 +54,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
           <span class="text-sm font-semibold">Evidencias · {{ totalFotos() }}/{{ maxFotos }}</span>
           @if (cargando()) {
             <p class="ayuda">Cargando fotos…</p>
-          } @else if (!fotosActuales().length && !vistas().length) {
+          } @else if (form.controls.resultado.value !== 'PENDIENTE' && !fotosActuales().length && !vistas().length) {
             <p class="ayuda">Esta parada no tiene fotos. Agrega al menos una.</p>
           }
           <div class="fotos">
@@ -128,7 +132,7 @@ export class CorregirCierre implements OnInit {
     this.api.get<Destino>(`/api/destinos/${destinoId}/`).subscribe({
       next: (destino) => {
         this.form.patchValue({
-          resultado: destino.estado === 'FALLIDO' ? 'FALLIDO' : 'EXITOSO',
+          resultado: destino.estado === 'FALLIDO' || destino.estado === 'PENDIENTE' ? destino.estado : 'EXITOSO',
           motivo_id: destino.motivo_id ? String(destino.motivo_id) : '',
           observacion: destino.observacion_cierre ?? '',
         });
@@ -187,6 +191,12 @@ export class CorregirCierre implements OnInit {
     this.archivos = this.archivos.filter((_, i) => i !== indice);
   }
 
+  avisoEstado(): string {
+    if (this.parada().estado === 'FALLIDO') return 'El conductor marcó esta parada como fallida.';
+    if (this.parada().estado === 'PENDIENTE') return 'Esta parada está pendiente de evidencias.';
+    return 'El conductor marcó esta parada como exitosa.';
+  }
+
   cancelar(): void {
     this.cancelada.emit();
   }
@@ -198,7 +208,7 @@ export class CorregirCierre implements OnInit {
       this.error.set('Selecciona un motivo para el cierre fallido.');
       return;
     }
-    if (this.totalFotos() < 1) {
+    if (resultado !== 'PENDIENTE' && this.totalFotos() < 1) {
       this.error.set('Debe quedar al menos una evidencia.');
       return;
     }

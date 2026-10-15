@@ -505,10 +505,6 @@ export class Operacion {
 
   abrirEliminar(destino: Destino): void {
     this.error.set('');
-    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
-      this.error.set('No se puede eliminar un destino exitoso o fallido.');
-      return;
-    }
     const ticket = ++this.solicitud;
     if (!destino.ruta_id) {
       if (destino.estado !== 'NO_INICIADO') {
@@ -545,7 +541,7 @@ export class Operacion {
     const destino = this.editando();
     const ruta = this.rutaAccion();
     if (!destino) return;
-    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') return;
+    if (!ruta && destino.estado !== 'NO_INICIADO') return;
     this.enviando.set(true);
     if (ruta) {
       const destinoIds = ruta.paradas.filter((parada) => parada.destino_id !== destino.id).map((parada) => parada.destino_id);
@@ -577,6 +573,10 @@ export class Operacion {
 
   textoEliminar(): string {
     const ruta = this.rutaAccion();
+    const estado = this.editando()?.estado;
+    if (ruta && (estado === 'EXITOSO' || estado === 'FALLIDO' || estado === 'PENDIENTE')) {
+      return 'Esta parada ya tiene un cierre. Al quitarla sale de la ruta y el destino vuelve a quedar libre, sin ese resultado.';
+    }
     if (ruta?.estado === 'EN_PROCESO') {
       return 'Quitar esta parada de una ruta ya iniciada la saca del recorrido en vivo. El conductor dejará de verla.';
     }
@@ -843,6 +843,8 @@ export class Operacion {
         return 'prog-pill prog-pill-pendiente';
       case 'EN_PROCESO':
         return 'prog-pill prog-pill-proceso';
+      case 'PENDIENTE':
+        return 'prog-pill prog-pill-pendiente';
       case 'EXITOSO':
         return 'prog-pill prog-pill-ok';
       case 'FALLIDO':
