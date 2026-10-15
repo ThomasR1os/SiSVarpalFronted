@@ -14,7 +14,7 @@ import { Paginacion } from '../../../shared/paginacion';
     <div class="panel-head">
       <div>
         <h2>Usuarios</h2>
-        <p>Desactivar cierra la sesión. El auxiliar se puede crear, pero su ingreso aún no está habilitado.</p>
+        <p>Desactivar cierra la sesión. El auxiliar ve las rutas donde va con el conductor y puede subir evidencias.</p>
       </div>
       <div class="btns">
         <button type="button" class="btn btn-primary" (click)="nuevo()">Nuevo usuario</button>

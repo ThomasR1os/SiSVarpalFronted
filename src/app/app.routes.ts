@@ -16,7 +16,6 @@ import { ClienteShell } from './features/cliente/cliente-shell';
 import { ClienteVista } from './features/cliente/cliente';
 import { Conductor } from './features/conductor/conductor';
 import { Login } from './features/login/login';
-import { SinAcceso } from './features/sin-acceso/sin-acceso';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -50,6 +49,12 @@ export const routes: Routes = [
     data: { roles: ['CONDUCTOR'] },
   },
   {
+    path: 'auxiliar',
+    component: Conductor,
+    canActivate: [sesionGuard, rolGuard],
+    data: { roles: ['AUXILIAR'] },
+  },
+  {
     path: 'cliente',
     component: ClienteShell,
     canActivate: [sesionGuard, rolGuard],
@@ -65,12 +70,6 @@ export const routes: Routes = [
       { path: 'ayuda', component: ClienteAyuda },
       { path: 'historial', component: ClienteHistorial },
     ],
-  },
-  {
-    path: 'sin-acceso',
-    component: SinAcceso,
-    canActivate: [sesionGuard, rolGuard],
-    data: { roles: ['AUXILIAR'] },
   },
   { path: '', pathMatch: 'full', canActivate: [entradaGuard], component: Login },
   { path: '**', canActivate: [entradaGuard], component: Login },

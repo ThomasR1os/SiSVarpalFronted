@@ -160,7 +160,7 @@ function atendida(parada: Parada): boolean {
                 }
               </section>
             } @else {
-              <p class="vacio-texto">Inicia la ruta para registrar la evidencia de este destino.</p>
+              <p class="vacio-texto">{{ puedeOperar() ? 'Inicia la ruta para registrar la evidencia de este destino.' : 'Cuando el conductor inicie la ruta podrás subir la evidencia de este destino.' }}</p>
             }
           </div>
         } @else {
@@ -220,7 +220,7 @@ function atendida(parada: Parada): boolean {
                 <app-icono nombre="mapa" class="size-5" /> Mapa
               </button>
             </div>
-            @if (ruta.estado === 'EN_PROCESO') {
+            @if (puedeOperar() && ruta.estado === 'EN_PROCESO') {
               <button type="button" class="btn h-12 gap-2 rounded-xl border-0 bg-azul text-white" (click)="abrirTraslado()">
                 <app-icono nombre="pin" class="size-5" /> Agregar traslado
               </button>
@@ -439,6 +439,7 @@ function atendida(parada: Parada): boolean {
 export class RutaConductor {
   readonly ruta = input.required<Ruta>();
   readonly puedeIniciar = input(false);
+  readonly puedeOperar = input(true);
   readonly color = input('#00275a');
   readonly posicionHoy = input<{ indice: number; total: number } | null>(null);
   readonly modo = model<Modo>('listado');
@@ -478,7 +479,9 @@ export class RutaConductor {
   protected readonly chipActual = computed(() => chipRuta(this.ruta()));
   protected readonly horario = computed(() => horarioParadas(this.ruta().paradas));
   protected readonly auxiliares = computed(() => textoAuxiliares(this.ruta().auxiliares));
-  protected readonly hayAccion = computed(() => this.ruta().estado === 'NO_INICIADA' || this.ruta().estado === 'EN_PROCESO');
+  protected readonly hayAccion = computed(
+    () => this.puedeOperar() && (this.ruta().estado === 'NO_INICIADA' || this.ruta().estado === 'EN_PROCESO'),
+  );
   protected readonly servicios = computed(() => {
     const tipos = [...new Set(this.ruta().paradas.map((parada) => etiquetaTipo(parada.tipo_servicio)))];
     return tipos.length ? tipos.join(', ') : '—';

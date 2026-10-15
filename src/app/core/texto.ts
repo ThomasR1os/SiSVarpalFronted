@@ -75,7 +75,7 @@ export function rutaPorRol(rol: Rol): string {
     case 'CLIENTE':
       return '/cliente';
     case 'AUXILIAR':
-      return '/sin-acceso';
+      return '/auxiliar';
   }
 }
 

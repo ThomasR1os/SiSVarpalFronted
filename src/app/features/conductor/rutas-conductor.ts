@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { Ruta } from '../../core/models';
-import { fechaCorta, horarioParadas, hoy } from '../../core/texto';
+import { fechaCorta, horarioParadas, hoy, nombrePersona } from '../../core/texto';
 import { Mapa } from '../../shared/mapa/mapa';
 import { LineaMapa, MarcaMapa, lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
 import { Icono } from './icono';
@@ -20,6 +20,7 @@ const PALETA = ['#1769e0', '#7c3aed', '#ea580c', '#0d9488', '#db2777', '#ca8a04'
         [ruta]="ruta"
         [color]="color(ruta)"
         [puedeIniciar]="puedeIniciar()"
+        [puedeOperar]="puedeOperar()"
         [posicionHoy]="posicionHoy(ruta)"
         [(modo)]="modo"
         (cambio)="cambio.emit($event)"
@@ -137,7 +138,7 @@ const PALETA = ['#1769e0', '#7c3aed', '#ea580c', '#0d9488', '#db2777', '#ca8a04'
               <span class="min-w-0 leading-tight">
                 <strong class="block truncate text-sm">{{ fechaCorta(ruta.fecha).slice(0, 5) }} · {{ ruta.cliente_nombre }}</strong>
                 <span class="flex items-center gap-1.5 text-xs text-base-content/60">
-                  {{ ruta.paradas.length }} {{ ruta.paradas.length === 1 ? 'destino' : 'destinos' }}
+                  {{ nombrePersona(ruta.conductor) }} · {{ ruta.paradas.length }} {{ ruta.paradas.length === 1 ? 'destino' : 'destinos' }}
                   <span class="badge badge-soft badge-xs font-semibold" [class]="chip(ruta).clase">{{ chip(ruta).texto }}</span>
                 </span>
               </span>
@@ -169,6 +170,10 @@ const PALETA = ['#1769e0', '#7c3aed', '#ea580c', '#0d9488', '#db2777', '#ca8a04'
           <app-icono nombre="edificio" class="size-6 text-primary" />
           <strong class="min-w-0 truncate font-display text-lg leading-tight">{{ ruta.cliente_nombre }}</strong>
         </span>
+        <span class="cd-dato w-full text-sm">
+          <app-icono nombre="perfil" class="size-5" />
+          <span class="min-w-0"><span class="cd-dato-label">Conductor</span><span class="block truncate">{{ nombrePersona(ruta.conductor) }}</span></span>
+        </span>
         <span class="grid w-full grid-cols-3 gap-2 text-sm">
           <span class="cd-dato"><app-icono nombre="camion" class="size-5" /><span class="min-w-0"><span class="cd-dato-label">Placa</span><span class="block truncate">{{ ruta.vehiculo?.placa || '—' }}</span></span></span>
           <span class="cd-dato"><app-icono nombre="pin" class="size-5" /><span class="min-w-0"><span class="cd-dato-label">Destinos</span>{{ ruta.paradas.length }}</span></span>
@@ -190,11 +195,13 @@ export class RutasConductor {
   readonly rutas = input.required<Ruta[]>();
   readonly seleccion = input.required<SeleccionRuta>();
   readonly puedeIniciar = input(false);
+  readonly puedeOperar = input(true);
   readonly elegir = output<SeleccionRuta>();
   readonly cambio = output<Ruta>();
   readonly volver = output<void>();
 
   protected readonly fechaCorta = fechaCorta;
+  protected readonly nombrePersona = nombrePersona;
   protected readonly chip = chipRuta;
   protected readonly resumenRuta = (ruta: Ruta) => resumenParadas(ruta.paradas);
   protected readonly modo = signal<Modo>('listado');

@@ -40,10 +40,10 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
         <div class="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-2.5">
           <button type="button" class="flex min-w-0 shrink-0 flex-col items-start" (click)="ir('inicio')" aria-label="Ir al inicio">
             <img class="h-8 w-auto sm:h-9" src="logo-varpal.png" alt="Varpal Soluciones Logísticas" />
-            <span class="pl-[22%] text-xs font-semibold text-secondary">App Conductor</span>
+            <span class="pl-[22%] text-xs font-semibold text-secondary">{{ marcaApp() }}</span>
           </button>
           <nav class="mx-auto hidden items-center gap-1 lg:flex" aria-label="Secciones">
-            @for (item of menu; track item.vista) {
+            @for (item of menu(); track item.vista) {
               <button type="button" class="btn btn-ghost gap-2 rounded-xl" [class.cd-tab-activa]="vista() === item.vista" (click)="ir(item.vista)">
                 <app-icono [nombre]="item.icono" class="size-5" />
                 {{ item.texto }}
@@ -78,23 +78,25 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
               </div>
             </section>
 
-            <div class="grid grid-cols-2 gap-3">
-              <button type="button" class="cd-accion bg-linear-to-br from-primary to-secondary" (click)="ir('servicio')">
-                <app-icono nombre="camion" class="pointer-events-none absolute -bottom-3 -left-3 size-28 text-white/10" />
-                <span class="flex items-center gap-2.5">
-                  <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-white/15"><app-icono nombre="servicio" class="size-6" /></span>
-                  <strong class="font-display text-lg leading-tight">Registrar servicio</strong>
-                </span>
-                <span class="relative text-xs leading-snug text-white/80 sm:text-sm">Inicio de operaciones, inicio de ruta, fin de ruta y fin de operaciones.</span>
-                <span class="cd-accion-flecha text-primary"><app-icono nombre="derecha" class="size-4" /></span>
-              </button>
+            <div class="grid gap-3" [class.grid-cols-2]="!esAuxiliar()">
+              @if (!esAuxiliar()) {
+                <button type="button" class="cd-accion bg-linear-to-br from-primary to-secondary" (click)="ir('servicio')">
+                  <app-icono nombre="camion" class="pointer-events-none absolute -bottom-3 -left-3 size-28 text-white/10" />
+                  <span class="flex items-center gap-2.5">
+                    <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-white/15"><app-icono nombre="servicio" class="size-6" /></span>
+                    <strong class="font-display text-lg leading-tight">Registrar servicio</strong>
+                  </span>
+                  <span class="relative text-xs leading-snug text-white/80 sm:text-sm">Inicio de operaciones, inicio de ruta, fin de ruta y fin de operaciones.</span>
+                  <span class="cd-accion-flecha text-primary"><app-icono nombre="derecha" class="size-4" /></span>
+                </button>
+              }
               <button type="button" class="cd-accion bg-linear-to-br from-accent to-azul" (click)="verRutaAsignada()">
                 <app-icono nombre="pin" class="pointer-events-none absolute -bottom-3 -left-2 size-24 text-white/15" />
                 <span class="flex items-center gap-2.5">
                   <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-white/20"><app-icono nombre="pin" class="size-6" /></span>
                   <strong class="font-display text-lg leading-tight">Ruta asignada</strong>
                 </span>
-                <span class="relative text-xs leading-snug text-white/85 sm:text-sm">Tus rutas asignadas: destinos, evidencias, iniciar y finalizar ruta.</span>
+                <span class="relative text-xs leading-snug text-white/85 sm:text-sm">{{ esAuxiliar() ? 'Las rutas donde vas con el conductor. Ahí subes las evidencias de cada destino.' : 'Tus rutas asignadas: destinos, evidencias, iniciar y finalizar ruta.' }}</span>
                 <span class="cd-accion-flecha text-azul"><app-icono nombre="derecha" class="size-4" /></span>
               </button>
             </div>
@@ -106,7 +108,8 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
               </button>
             </div>
 
-            <div class="grid gap-3 lg:grid-cols-2">
+            <div class="grid gap-3" [class.lg:grid-cols-2]="!esAuxiliar()">
+              @if (!esAuxiliar()) {
               <article class="cd-card">
                 <div class="flex items-center justify-between gap-2">
                   <span class="cd-etiqueta bg-azul/10 text-azul">Servicio interno</span>
@@ -135,6 +138,7 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
                   <app-icono nombre="play" class="size-5" /> Registrar servicio
                 </button>
               </article>
+              }
 
               @if (rutaHoy(); as ruta) {
                 <article class="cd-card">
@@ -173,7 +177,7 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
                     </button>
                   }
                   <button type="button" class="cd-btn mt-auto" (click)="verRutaAsignada()">
-                    <app-icono nombre="mapa" class="size-5" /> Ver ruta asignada
+                    <app-icono nombre="mapa" class="size-5" /> {{ esAuxiliar() ? 'Ver ruta y subir evidencias' : 'Ver ruta asignada' }}
                     <app-icono nombre="derecha" class="ml-auto size-5" />
                   </button>
                 </article>
@@ -182,7 +186,7 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
                   <span class="grid size-12 place-items-center rounded-full bg-base-200 text-base-content/50"><app-icono nombre="mapa" class="size-6" /></span>
                   <div>
                     <p class="font-display text-base font-semibold">Sin ruta asignada</p>
-                    <p class="text-sm text-base-content/60">Cuando la empresa confirme tus rutas aparecerán aquí.</p>
+                    <p class="text-sm text-base-content/60">{{ esAuxiliar() ? 'Cuando te asignen a una ruta con un conductor aparecerá aquí.' : 'Cuando la empresa confirme tus rutas aparecerán aquí.' }}</p>
                   </div>
                 </article>
               }
@@ -216,6 +220,7 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
               [rutas]="activas()"
               [seleccion]="seleccionActual()"
               [puedeIniciar]="puedeIniciar()"
+              [puedeOperar]="!esAuxiliar()"
               (elegir)="elegir($event)"
               (cambio)="actualizar($event)"
               (volver)="ir('inicio')"
@@ -246,8 +251,8 @@ const PASOS_SERVICIO = ['Inicio de operaciones', 'Inicio de ruta', 'Fin de ruta'
       </main>
 
       <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-base-300 bg-base-100/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,20,48,0.06)] backdrop-blur lg:hidden" aria-label="Secciones">
-        <div class="mx-auto grid max-w-lg grid-cols-4">
-          @for (item of menu; track item.vista) {
+        <div class="mx-auto grid max-w-lg" [class]="menu().length === 3 ? 'grid-cols-3' : 'grid-cols-4'">
+          @for (item of menu(); track item.vista) {
             <button type="button" class="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold transition-colors" [class]="vista() === item.vista ? 'text-azul' : 'text-base-content/60'" (click)="ir(item.vista)" [attr.aria-current]="vista() === item.vista ? 'page' : null">
               <app-icono [nombre]="item.icono" class="size-6" />
               {{ item.texto }}
@@ -267,9 +272,11 @@ export class Conductor {
   private timer: number | null = null;
   private watchId: number | null = null;
   private ultima: GeolocationPosition | null = null;
-  protected readonly menu = MENU;
   protected readonly pasos = PASOS_SERVICIO;
   protected readonly usuario = this.auth.usuario;
+  protected readonly esAuxiliar = computed(() => this.usuario()?.rol === 'AUXILIAR');
+  protected readonly marcaApp = computed(() => (this.esAuxiliar() ? 'App Auxiliar' : 'App Conductor'));
+  protected readonly menu = computed(() => (this.esAuxiliar() ? MENU.filter((item) => item.vista !== 'servicio') : MENU));
   protected readonly nombre = computed(() => nombrePersona(this.usuario()));
   protected readonly rol = computed(() => etiquetaRol(this.usuario()?.rol ?? ''));
   protected readonly iniciales = computed(() => {
@@ -334,7 +341,8 @@ export class Conductor {
 
   protected readonly conductorHoy = computed(() => {
     const conductor = this.rutaHoy()?.conductor;
-    return conductor ? nombrePersona(conductor) : this.nombre();
+    if (conductor) return nombrePersona(conductor);
+    return this.esAuxiliar() ? '—' : this.nombre();
   });
 
   protected readonly estadoTexto = computed(() => {
@@ -344,12 +352,16 @@ export class Conductor {
   });
 
   protected readonly puedeIniciar = computed(
-    () => !this.rutas().some((ruta) => ruta.estado === 'EN_PROCESO'),
+    () => !this.esAuxiliar() && !this.rutas().some((ruta) => ruta.estado === 'EN_PROCESO'),
   );
 
   constructor() {
     this.cargar();
     effect(() => {
+      if (this.esAuxiliar()) {
+        this.sincronizarGps(null);
+        return;
+      }
       const activa = this.rutas().find((ruta) => ruta.estado === 'EN_PROCESO');
       this.sincronizarGps(activa?.id ?? null);
     });
