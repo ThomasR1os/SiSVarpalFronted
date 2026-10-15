@@ -87,7 +87,7 @@ import { CorregirCierre } from './corregir-cierre';
               </select>
             </label>
             <div class="wide">
-              <span class="ayuda">Auxiliares (hasta 4). Todavía no pueden entrar a la aplicación.</span>
+              <span class="ayuda">Auxiliares (hasta 4). Verán la ruta y podrán subir evidencias.</span>
               <div class="flex flex-wrap gap-3">
                 @for (auxiliar of catalogo()?.auxiliares ?? []; track auxiliar.id) {
                   <label class="label cursor-pointer justify-start gap-2 font-normal">
@@ -98,6 +98,28 @@ import { CorregirCierre } from './corregir-cierre';
               </div>
             </div>
             <button class="btn btn-outline" type="submit" [disabled]="enviando()">Guardar asignación</button>
+          </form>
+        }
+        @if (puedeAuxiliares()) {
+          <form class="form-grid" (ngSubmit)="guardarAuxiliares()">
+            <div class="wide">
+              <span class="ayuda">La ruta ya está en camino. Puedes agregar o quitar auxiliares (hasta 4). Ellos verán esta ruta y podrán subir evidencias.</span>
+              @if (catalogo(); as datos) {
+                <div class="flex flex-wrap gap-3">
+                  @for (auxiliar of datos.auxiliares; track auxiliar.id) {
+                    <label class="label cursor-pointer justify-start gap-2 font-normal">
+                      <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="auxiliares().includes(auxiliar.id)" [disabled]="!auxiliares().includes(auxiliar.id) && auxiliares().length >= 4" (change)="alternarAuxiliar(auxiliar.id, $event)" />
+                      {{ auxiliar.nombre }} {{ auxiliar.apellido }}
+                    </label>
+                  } @empty {
+                    <span class="ayuda">No hay auxiliares activos.</span>
+                  }
+                </div>
+              } @else {
+                <span class="loading loading-spinner loading-sm text-primary"></span>
+              }
+            </div>
+            <button class="btn btn-outline" type="submit" [disabled]="enviando()">Guardar auxiliares</button>
           </form>
         }
         @if (puedeParadas()) {
@@ -255,6 +277,9 @@ export class RutaDetalle {
   protected readonly puedeParadas = computed(
     () => this.editable() || (this.modo() === 'admin' && this.ruta().estado === 'EN_PROCESO'),
   );
+  protected readonly puedeAuxiliares = computed(
+    () => this.modo() === 'admin' && this.ruta().estado === 'EN_PROCESO',
+  );
   protected readonly todasCerradas = computed(() => paradasCerradas(this.ruta().paradas));
   protected readonly geometria = computed(() => lineaGeo(this.ruta().geometria_empresa));
   protected readonly encuadre = computed(() => {
@@ -279,7 +304,7 @@ export class RutaDetalle {
   constructor() {
     effect(() => {
       const ruta = this.ruta();
-      const firma = `${ruta.id}:${ruta.estado}:${ruta.paradas.map((p) => `${p.destino_id}:${p.orden}:${p.estado}:${p.latitud}:${p.longitud}:${p.direccion}:${p.distrito}`).join('|')}:${ruta.geometria_empresa?.coordinates?.length ?? 0}`;
+      const firma = `${ruta.id}:${ruta.estado}:${ruta.auxiliares.map((a) => a.id).join(',')}:${ruta.paradas.map((p) => `${p.destino_id}:${p.orden}:${p.estado}:${p.latitud}:${p.longitud}:${p.direccion}:${p.distrito}`).join('|')}:${ruta.geometria_empresa?.coordinates?.length ?? 0}`;
       if (firma !== this.firma) {
         this.firma = firma;
         this.paradasLocal.set([...ruta.paradas].sort((a, b) => a.orden - b.orden));
@@ -293,7 +318,7 @@ export class RutaDetalle {
       }
       if (this.puedeParadas() && this.catalogoCliente !== ruta.cliente_id) {
         this.catalogoCliente = ruta.cliente_id;
-        if (this.editable()) {
+        if (this.editable() || this.puedeAuxiliares()) {
           this.catalogos.paraRuta(ruta.cliente_id).subscribe({
             next: (catalogo) => this.catalogo.set(catalogo),
             error: (err: unknown) => this.error.set(mensajeError(err)),
@@ -349,6 +374,17 @@ export class RutaDetalle {
       destino_ids: this.paradasLocal().map((p) => p.destino_id),
     }).subscribe({
       next: (ruta) => this.listo(ruta, 'Orden guardado.'),
+      error: (err: unknown) => this.fallo(err),
+    });
+  }
+
+  guardarAuxiliares(): void {
+    if (!this.puedeAuxiliares()) return;
+    this.enviando.set(true);
+    this.api.patch<Ruta>(`/api/rutas/${this.ruta().id}/`, {
+      auxiliar_ids: this.auxiliares(),
+    }).subscribe({
+      next: (ruta) => this.listo(ruta, 'Auxiliares actualizados. Ya pueden ver esta ruta y subir evidencias.'),
       error: (err: unknown) => this.fallo(err),
     });
   }

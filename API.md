@@ -700,6 +700,8 @@ Las coordenadas de la línea son `[longitud, latitud]`.
 
 Mientras esté en `BORRADOR` o `NO_INICIADA`. Mismos campos del alta, todos opcionales. Si cambias la fecha, los destinos ya deben tener esa fecha.
 
+En `EN_PROCESO` también se acepta un cuerpo que solo traiga `auxiliar_ids` (hasta 4, o `[]` para quitarlos). El conductor, la unidad y las bases no cambian.
+
 ### POST `/api/rutas/optimizar/`
 
 No guarda nada. Sirve para previsualizar el orden.
