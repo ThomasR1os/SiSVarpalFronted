@@ -101,7 +101,7 @@ import { CorregirCierre } from './corregir-cierre';
           </form>
         }
         @if (puedeAuxiliares()) {
-          <form class="form-grid" (ngSubmit)="guardarAuxiliares()">
+          <div class="form-grid">
             <div class="wide">
               <span class="ayuda">La ruta ya está en camino. Puedes agregar o quitar auxiliares (hasta 4). Ellos verán esta ruta y podrán subir evidencias.</span>
               @if (catalogo(); as datos) {
@@ -119,8 +119,8 @@ import { CorregirCierre } from './corregir-cierre';
                 <span class="loading loading-spinner loading-sm text-primary"></span>
               }
             </div>
-            <button class="btn btn-outline" type="submit" [disabled]="enviando()">Guardar auxiliares</button>
-          </form>
+            <button type="button" class="btn btn-outline" (click)="guardarAuxiliares()" [disabled]="enviando()">Guardar auxiliares</button>
+          </div>
         }
         @if (puedeParadas()) {
           <div class="barra-filtros">
