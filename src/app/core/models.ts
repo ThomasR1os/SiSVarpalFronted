@@ -248,6 +248,9 @@ export interface ParadaSeguimiento {
   latitud: string;
   longitud: string;
   nombre_receptor: string;
+  apellido_receptor?: string;
+  documento_receptor?: string;
+  tipo_servicio?: TipoServicio;
 }
 
 export interface Seguimiento {

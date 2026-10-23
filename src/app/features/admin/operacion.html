@@ -29,11 +29,8 @@
         <button type="button" [class.activo]="ambito() === 'provincia'" (click)="fijarAmbito('provincia')">Provincia</button>
       </div>
     </div>
-    <label class="prog-campo">Desde
-      <input type="date" [value]="fechaDesde()" [max]="fecha()" (change)="cambiarDesde($event)" />
-    </label>
-    <label class="prog-campo">Hasta
-      <input type="date" [value]="fecha()" [min]="fechaDesde()" (change)="cambiarHasta($event)" />
+    <label class="prog-campo">Fecha
+      <input type="date" [value]="fecha()" (change)="cambiarFecha($event)" />
     </label>
     <label class="prog-campo">Tipo de servicio
       <select [value]="tipoServicio()" (change)="cambiarTipoServicio($event)">
@@ -120,7 +117,7 @@
         <div class="prog-col-head">
           <div>
             <h2>2. Destinatarios</h2>
-            <p>{{ totalDestinos() }} en {{ etiquetaRango() }}. Marca los que irán en la ruta.</p>
+            <p>{{ totalDestinos() }} el {{ etiquetaFecha() }}. Marca los que irán en la ruta.</p>
           </div>
           <button type="button" class="prog-link" (click)="verTodos()">Limpiar filtros</button>
         </div>
@@ -159,7 +156,7 @@
               <thead>
                 <tr>
                   <th>
-                    <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="paginaMarcada()" (change)="alternarPagina($event)" aria-label="Seleccionar la página" />
+                    <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="paginaMarcada()" (change)="alternarPagina($event)" aria-label="Seleccionar todos" />
                   </th>
                   <th>#</th>
                   <th>Documento</th>
@@ -178,7 +175,7 @@
                         <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="seleccion().includes(destino.id)" (change)="alternarSeleccion(destino.id, $event)" [attr.aria-label]="'Seleccionar ' + destino.codigo_externo" />
                       }
                     </td>
-                    <td data-label="#">{{ (paginaDestinos() - 1) * tamanoDestinos + indice + 1 }}</td>
+                    <td data-label="#">{{ indice + 1 }}</td>
                     <td data-label="Documento">{{ documentoDestino(destino) }}</td>
                     <td data-label="Destinatario">{{ nombreDestinatario(destino) }}</td>
                     <td data-label="Dirección">{{ destino.direccion }}</td>
@@ -204,12 +201,11 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr class="fila-vacia"><td colspan="8">No hay destinatarios entre {{ etiquetaRango() }}. Prueba otro rango o limpia los filtros.</td></tr>
+                  <tr class="fila-vacia"><td colspan="8">No hay destinatarios el {{ etiquetaFecha() }}. Prueba otra fecha o limpia los filtros.</td></tr>
                 }
               </tbody>
             </table>
           </div>
-          <app-paginacion [pagina]="paginaDestinos()" [tamano]="tamanoDestinos" [total]="totalDestinos()" (paginaChange)="irDestinos($event)" />
         }
       </section>
 
@@ -220,14 +216,7 @@
             <p>Elige conductor y unidad. Luego asigna los destinatarios marcados.</p>
           </div>
         </div>
-        <div class="prog-modos" role="group" aria-label="Modo de asignación">
-          <button type="button" [class.activo]="modoAsignacion() === 'manual'" (click)="fijarModo('manual')">Asignación manual</button>
-          <button type="button" [class.activo]="modoAsignacion() === 'optimizacion'" (click)="fijarModo('optimizacion')">Por optimización</button>
-        </div>
         <form class="prog-asigna" [formGroup]="rutaForm">
-          <label class="prog-campo">Código de ruta
-            <input [value]="codigoRuta()" readonly />
-          </label>
           <label class="prog-campo">Conductor
             <span class="prog-select-persona">
               <span class="prog-avatar" aria-hidden="true">{{ iniciales(conductorActual()) || '—' }}</span>
@@ -299,13 +288,15 @@
               </select>
             </label>
           </details>
+          <label class="prog-opt" [class.activa]="modoAsignacion() === 'optimizacion'">
+            <input type="checkbox" class="sr-only" [checked]="modoAsignacion() === 'optimizacion'" (change)="alternarOptimizacion($event)" />
+            <span class="prog-switch" aria-hidden="true"><span></span></span>
+            <span class="prog-opt-texto">
+              <strong>{{ modoAsignacion() === 'optimizacion' ? 'Optimización habilitada' : 'Optimización inhabilitada' }}</strong>
+              <span>{{ modoAsignacion() === 'optimizacion' ? 'Al publicar se calcula el orden de las paradas.' : 'Ordenas las paradas a mano.' }}</span>
+            </span>
+          </label>
         </form>
-        @if (modoAsignacion() === 'optimizacion') {
-          <button type="button" class="prog-btn prog-btn-linea" (click)="sugerir()" [disabled]="enviando() || (!seleccion().length && !orden().length)">Sugerir orden</button>
-          @if (preview(); as previa) {
-            <p class="prog-preview">{{ distancia(previa.distancia_metros) }} · {{ duracion(previa.duracion_segundos) }}@if (!previa.dentro_de_lima) { · Parte del recorrido queda fuera de Lima. }</p>
-          }
-        }
         @if (orden().length) {
           <ol class="prog-orden">
             @for (id of orden(); track id; let indice = $index) {
@@ -324,7 +315,7 @@
         <aside class="prog-reglas">
           <p>Antes de publicar</p>
           <ul>
-            <li>La ruta agrupa un solo cliente y el rango de fechas elegido.</li>
+            <li>La ruta agrupa un solo cliente y la fecha elegida.</li>
             <li>Cada fila del Excel necesita coordenadas.</li>
             <li>El conductor ve la ruta solo cuando la publicas.</li>
           </ul>
@@ -336,7 +327,7 @@
       <div class="prog-rutas-head">
         <div>
           <h2>Rutas</h2>
-          <p>{{ etiquetaRango() }} · {{ totalRutas() }} {{ totalRutas() === 1 ? 'ruta' : 'rutas' }}</p>
+          <p>{{ etiquetaFecha() }} · {{ totalRutas() }} {{ totalRutas() === 1 ? 'ruta' : 'rutas' }}</p>
         </div>
         <div class="prog-rutas-tools">
           @if (verRutas()) {
@@ -368,9 +359,8 @@
               <app-badge [estado]="ruta.estado" />
               <span class="prog-ruta-abrir">Abrir</span>
             </button>
-          } @empty { <p class="vacio-texto">No hay rutas en este rango.</p> }
+          } @empty { <p class="vacio-texto">No hay rutas en esta fecha.</p> }
         </div>
-        <app-paginacion [pagina]="paginaRutas()" [tamano]="tamano" [total]="totalRutas()" (paginaChange)="irRutas($event)" />
       }
     </section>
   }

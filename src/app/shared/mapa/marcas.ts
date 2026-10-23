@@ -8,6 +8,7 @@ export interface MarcaMapa {
   tipo: 'parada' | 'origen' | 'final' | 'camion';
   texto: string;
   titulo: string;
+  detalle?: string;
   estado?: string;
   color?: string;
 }
@@ -26,6 +27,22 @@ export function lineaGeo(linea: LineStringGeo | null | undefined): [number, numb
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
     coords.push([lng, lat]);
   }
+  return coords.length > 1 ? coords : null;
+}
+
+export function lineaParadas(opciones: {
+  paradas: { latitud: string; longitud: string }[];
+  origen?: PuntoRuta | null;
+  final?: PuntoRuta | null;
+}): [number, number][] | null {
+  const coords: [number, number][] = [];
+  const agregar = (punto: { latitud: string | number | null | undefined; longitud: string | number | null | undefined } | null | undefined) => {
+    const marca = marcaSiValida(punto);
+    if (marca) coords.push([marca.lng, marca.lat]);
+  };
+  agregar(opciones.origen);
+  for (const parada of opciones.paradas) agregar(parada);
+  agregar(opciones.final);
   return coords.length > 1 ? coords : null;
 }
 

@@ -2,15 +2,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { EMPTY, expand, reduce } from 'rxjs';
 import { Api, guardarBlob } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { CatalogoRuta, Catalogos } from '../../core/catalogos';
 import { Cliente, Destino, ImportacionDestinos, Optimizacion, Pagina, Punto, Ruta, TipoServicio } from '../../core/models';
 import {
   TAMANO_CATALOGO,
-  TAMANO_PAGINA,
-  distancia,
-  duracion,
   etiquetaEstado,
   etiquetaTipo,
   fechaCorta,
@@ -21,12 +19,11 @@ import {
 } from '../../core/texto';
 import { Badge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
-import { Paginacion } from '../../shared/paginacion';
 import { RutaDetalle } from '../ruta/ruta-detalle';
 
 @Component({
   selector: 'app-operacion',
-  imports: [ReactiveFormsModule, Badge, Modal, Paginacion, RutaDetalle],
+  imports: [ReactiveFormsModule, Badge, Modal, RutaDetalle],
   templateUrl: './operacion.html',
   host: { class: 'prog-host flex flex-col gap-4' },
 })
@@ -36,15 +33,9 @@ export class Operacion {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly tamano = TAMANO_PAGINA;
-  protected readonly tamanoDestinos = 10;
   protected readonly fechaCorta = fechaCorta;
   protected readonly etiquetaTipo = etiquetaTipo;
   protected readonly nombrePersona = nombrePersona;
-  protected readonly distancia = distancia;
-  protected readonly duracion = duracion;
-
-  protected readonly fechaDesde = signal(hoy());
   protected readonly fecha = signal(hoy());
   protected readonly clienteId = signal<number | null>(null);
   protected readonly ambito = signal<'local' | 'provincia'>('local');
@@ -56,7 +47,7 @@ export class Operacion {
   protected readonly verErrores = signal(false);
   protected readonly verRutas = signal(false);
   protected readonly arrastrando = signal(false);
-  protected readonly modoAsignacion = signal<'manual' | 'optimizacion'>('manual');
+  protected readonly modoAsignacion = signal<'manual' | 'optimizacion'>('optimizacion');
   protected readonly horaSalida = signal('08:00');
   protected readonly conductorId = signal('');
   protected readonly vehiculoId = signal('');
@@ -64,8 +55,6 @@ export class Operacion {
   protected readonly auxiliar2Id = signal('');
   protected readonly archivoHora = signal('');
   protected readonly estadoRuta = signal('');
-  protected readonly paginaDestinos = signal(1);
-  protected readonly paginaRutas = signal(1);
   protected readonly clientes = signal<Cliente[]>([]);
   protected readonly destinos = signal<Destino[]>([]);
   protected readonly totalDestinos = signal(0);
@@ -91,6 +80,8 @@ export class Operacion {
   protected readonly enviando = signal(false);
   private archivo: File | null = null;
   private solicitud = 0;
+  private rutasTicket = 0;
+  private destinosTicket = 0;
 
   protected readonly destinoForm = this.fb.nonNullable.group({
     codigo_externo: ['', Validators.required],
@@ -194,35 +185,21 @@ export class Operacion {
     }
   }
 
-  cambiarDesde(event: Event): void {
-    const valor = (event.target as HTMLInputElement).value;
-    if (!valor) return;
-    this.fechaDesde.set(valor);
-    if (this.fecha() < valor) this.fecha.set(valor);
-    this.paginaRutas.set(1);
-    this.paginaDestinos.set(1);
-    this.cargar();
-  }
-
-  cambiarHasta(event: Event): void {
+  cambiarFecha(event: Event): void {
     const valor = (event.target as HTMLInputElement).value;
     if (!valor) return;
     this.fecha.set(valor);
-    if (this.fechaDesde() > valor) this.fechaDesde.set(valor);
-    this.paginaDestinos.set(1);
-    this.paginaRutas.set(1);
     this.seleccion.set([]);
     this.cargar();
   }
 
-  etiquetaRango(): string {
-    return `${fechaCorta(this.fechaDesde())} – ${fechaCorta(this.fecha())}`;
+  etiquetaFecha(): string {
+    return fechaCorta(this.fecha());
   }
 
   cambiarCliente(event: Event): void {
     const id = Number((event.target as HTMLSelectElement).value);
     this.clienteId.set(id || null);
-    this.paginaDestinos.set(1);
     this.seleccion.set([]);
     this.orden.set([]);
     this.destinosArmado.set([]);
@@ -266,40 +243,30 @@ export class Operacion {
   }
 
   verTodos(): void {
-    const dia = hoy();
-    this.fechaDesde.set(dia);
-    this.fecha.set(dia);
+    this.fecha.set(hoy());
     this.busqueda.set('');
     this.tipoServicio.set('');
     this.estadoDestino.set('');
     this.sinRuta.set(false);
     this.filtrosAbiertos.set(false);
-    this.paginaDestinos.set(1);
-    this.paginaRutas.set(1);
     this.seleccion.set([]);
     this.cargar();
   }
 
   cambiarEstadoDestino(event: Event): void {
     this.estadoDestino.set((event.target as HTMLSelectElement).value);
-    this.paginaDestinos.set(1);
     this.cargarDestinos();
   }
 
   cambiarSinRuta(event: Event): void {
     this.sinRuta.set((event.target as HTMLInputElement).checked);
-    this.paginaDestinos.set(1);
     this.cargarDestinos();
   }
 
   cambiarEstadoRuta(event: Event): void {
     this.estadoRuta.set((event.target as HTMLSelectElement).value);
-    this.paginaRutas.set(1);
     this.cargarRutas();
   }
-
-  irDestinos(pagina: number): void { this.paginaDestinos.set(pagina); this.cargarDestinos(); }
-  irRutas(pagina: number): void { this.paginaRutas.set(pagina); this.cargarRutas(); }
 
   alternarSeleccion(id: number, event: Event): void {
     const marcado = (event.target as HTMLInputElement).checked;
@@ -618,7 +585,7 @@ export class Operacion {
         this.enviando.set(false);
         this.importacion.set(resultado);
         this.aviso.set(
-          `Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron. Si el archivo trae otra fecha, ajústala en Desde y Hasta para verlos.`,
+          `Se cargaron ${resultado.creados} destinos. ${resultado.rechazados.length} filas se rechazaron. Si el archivo trae otra fecha, ajústala en Fecha para verlos.`,
         );
         this.cargarDestinos();
       },
@@ -716,33 +683,6 @@ export class Operacion {
     this.preview.set(null);
   }
 
-  sugerir(): void {
-    const clienteId = this.clienteId();
-    if (!clienteId) return;
-    if (!this.orden().length) this.asignarDestinos();
-    if (!this.orden().length) {
-      this.error.set('Selecciona al menos un destino para sugerir el orden.');
-      return;
-    }
-    this.enviando.set(true);
-    const raw = this.rutaForm.getRawValue();
-    this.api.post<Optimizacion>('/api/rutas/optimizar/', {
-      cliente_id: clienteId,
-      fecha: this.fecha(),
-      base_origen_id: idOpcional(raw.base_origen_id),
-      base_final_id: idOpcional(raw.base_final_id),
-      destino_ids: this.orden(),
-    }).subscribe({
-      next: (resultado) => {
-        this.enviando.set(false);
-        this.preview.set(resultado);
-        this.orden.set(resultado.destino_ids);
-        this.aviso.set('Orden sugerido. La ruta sigue en borrador hasta que la publiques.');
-      },
-      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
-    });
-  }
-
   abrirRuta(id: number): void {
     this.api.get<Ruta>(`/api/rutas/${id}/`).subscribe({
       next: (ruta) => {
@@ -801,8 +741,10 @@ export class Operacion {
     this.horaSalida.set((event.target as HTMLInputElement).value);
   }
 
-  fijarModo(modo: 'manual' | 'optimizacion'): void {
-    this.modoAsignacion.set(modo);
+  alternarOptimizacion(event: Event): void {
+    const activo = (event.target as HTMLInputElement).checked;
+    this.modoAsignacion.set(activo ? 'optimizacion' : 'manual');
+    if (!activo) this.preview.set(null);
   }
 
   exportarDestinos(): void {
@@ -862,39 +804,78 @@ export class Operacion {
   private cargarDestinos(): void {
     const clienteId = this.clienteId();
     if (!clienteId) return;
-    this.api.get<Pagina<Destino>>('/api/destinos/', {
+    const ticket = ++this.destinosTicket;
+    const consulta = {
       cliente: clienteId,
-      fecha_desde: this.fechaDesde(),
-      fecha_hasta: this.fecha(),
+      fecha: this.fecha(),
       estado: this.estadoDestino() || undefined,
       sin_ruta: this.sinRuta() ? true : undefined,
-      page: this.paginaDestinos(),
-      page_size: this.tamanoDestinos,
-    }).subscribe({
-      next: (pagina) => { this.destinos.set(pagina.results); this.totalDestinos.set(pagina.count); },
-      error: (err: unknown) => this.error.set(mensajeError(err)),
+      page_size: 100,
+    };
+    const pedir = (page: number) => this.api.get<Pagina<Destino>>('/api/destinos/', { ...consulta, page });
+    let paginaActual = 1;
+    pedir(1).pipe(
+      expand((pagina) => {
+        if (ticket !== this.destinosTicket) return EMPTY;
+        const siguiente = paginaSiguiente(pagina.next);
+        if (pagina.results.length < 100 || siguiente == null || siguiente <= paginaActual) return EMPTY;
+        paginaActual = siguiente;
+        return pedir(siguiente);
+      }),
+      reduce((acumulado, pagina) => {
+        acumulado.resultados.push(...pagina.results);
+        acumulado.total = pagina.count;
+        return acumulado;
+      }, { resultados: [] as Destino[], total: 0 }),
+    ).subscribe({
+      next: (lista) => {
+        if (ticket !== this.destinosTicket) return;
+        this.destinos.set(lista.resultados);
+        this.totalDestinos.set(lista.total);
+      },
+      error: (err: unknown) => {
+        if (ticket === this.destinosTicket) this.error.set(mensajeError(err));
+      },
     });
   }
 
   private incluirFecha(dia: string): void {
     const fecha = dia.slice(0, 10);
-    if (!fecha) return;
-    if (fecha < this.fechaDesde()) this.fechaDesde.set(fecha);
-    if (fecha > this.fecha()) this.fecha.set(fecha);
+    if (fecha) this.fecha.set(fecha);
   }
 
   private cargarRutas(): void {
-    this.api.get<Pagina<Ruta>>('/api/rutas/', {
+    const ticket = ++this.rutasTicket;
+    const consulta = {
       fecha: this.fecha(),
-      fecha_desde: this.fechaDesde(),
-      fecha_hasta: this.fecha(),
       cliente: this.clienteId() || undefined,
       estado: this.estadoRuta() || undefined,
-      page: this.paginaRutas(),
-      page_size: this.tamano,
-    }).subscribe({
-      next: (pagina) => { this.rutas.set(pagina.results); this.totalRutas.set(pagina.count); },
-      error: (err: unknown) => this.error.set(mensajeError(err)),
+      page_size: 100,
+    };
+    const pedir = (page: number) => this.api.get<Pagina<Ruta>>('/api/rutas/', { ...consulta, page });
+    let paginaActual = 1;
+    pedir(1).pipe(
+      expand((pagina) => {
+        if (ticket !== this.rutasTicket) return EMPTY;
+        const siguiente = paginaSiguiente(pagina.next);
+        if (pagina.results.length < 100 || siguiente == null || siguiente <= paginaActual) return EMPTY;
+        paginaActual = siguiente;
+        return pedir(siguiente);
+      }),
+      reduce((acumulado, pagina) => {
+        acumulado.resultados.push(...pagina.results);
+        acumulado.total = pagina.count;
+        return acumulado;
+      }, { resultados: [] as Ruta[], total: 0 }),
+    ).subscribe({
+      next: (lista) => {
+        if (ticket !== this.rutasTicket) return;
+        this.rutas.set(lista.resultados);
+        this.totalRutas.set(lista.total);
+      },
+      error: (err: unknown) => {
+        if (ticket === this.rutasTicket) this.error.set(mensajeError(err));
+      },
     });
   }
 
@@ -982,7 +963,13 @@ export class Operacion {
       base_origen_id: idOpcional(raw.base_origen_id),
       base_final_id: idOpcional(raw.base_final_id),
       destino_ids: destinoIds,
-      optimizar: this.modoAsignacion() === 'optimizacion' && !this.preview(),
+      optimizar: this.modoAsignacion() === 'optimizacion',
     };
   }
+}
+
+function paginaSiguiente(next: string | null): number | null {
+  if (!next) return null;
+  const pagina = Number(new URL(next, 'http://local').searchParams.get('page'));
+  return Number.isFinite(pagina) && pagina > 0 ? pagina : null;
 }

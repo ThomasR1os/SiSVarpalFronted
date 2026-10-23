@@ -1,0 +1,210 @@
+<div class="prog evi">
+  <header class="prog-encabezado">
+    <div>
+      <p class="prog-miga">Operación <span aria-hidden="true">›</span> Evidencias</p>
+      <h1>Evidencias</h1>
+      <p>Revisa las fotos de cierre, la observación y el estado de cada parada.</p>
+    </div>
+    <div class="prog-chip" [class.lista]="ambito() === 'todas'">
+      <span>{{ nombreCliente() }}</span>
+      <strong>{{ etiquetaAmbito() }}</strong>
+    </div>
+  </header>
+
+  <section class="prog-card evi-filtros">
+    <label class="prog-campo">Cliente
+      <span class="prog-select-marca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M4 16V8l4-2 4 2 4-2 4 2v8l-4 2-4-2-4 2z" /></svg>
+        <select [value]="clienteId() ?? ''" (change)="cambiarCliente($event)">
+          <option value="">Todos los clientes</option>
+          @for (cliente of clientes(); track cliente.id) {
+            <option [value]="cliente.id">{{ cliente.nombre_comercial || cliente.razon_social }}</option>
+          }
+        </select>
+      </span>
+    </label>
+    <div class="prog-campo">Operación
+      <div class="prog-segmento evi-segmento" role="group" aria-label="Tipo de operación">
+        <button type="button" [class.activo]="ambito() === 'todas'" (click)="fijarAmbito('todas')">Todas</button>
+        <button type="button" [class.activo]="ambito() === 'local'" (click)="fijarAmbito('local')">Local</button>
+        <button type="button" [class.activo]="ambito() === 'provincia'" (click)="fijarAmbito('provincia')">Provincia</button>
+      </div>
+    </div>
+    <label class="prog-campo">Fecha
+      <span class="evi-fecha">
+        <input type="date" [value]="fecha()" (change)="cambiarFecha($event)" />
+        <button type="button" [class.activo]="fecha() === hoyIso" (click)="irHoy()">Hoy</button>
+        <button type="button" [class.activo]="fecha() === ayerIso" (click)="irAyer()">Ayer</button>
+      </span>
+    </label>
+    <label class="prog-campo">Tipo de servicio
+      <select [value]="tipo()" (change)="cambiarTipo($event)">
+        <option value="">Todos los servicios</option>
+        <option value="ENTREGA">Entrega</option>
+        <option value="INTERCAMBIO">Intercambio</option>
+        <option value="RECOJO">Recojo</option>
+        <option value="TRASLADO">Traslado</option>
+      </select>
+    </label>
+    <label class="prog-campo">Buscar
+      <span class="prog-buscar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path stroke-linecap="round" d="m16 16 4 4" /></svg>
+        <input type="search" placeholder="Código, nombre, documento o dirección" [value]="buscar()" (input)="cambiarBuscar($event)" />
+      </span>
+    </label>
+  </section>
+
+  @if (error()) {
+    <div class="alert alert-error">
+      <span>{{ error() }}</span>
+      <button type="button" class="btn btn-sm" (click)="reintentar()">Reintentar</button>
+    </div>
+  }
+
+  <section class="evi-kpis" aria-label="Resumen del día">
+    <button type="button" class="evi-kpi" [class.activo]="corte() === ''" [attr.aria-pressed]="corte() === ''" (click)="fijarCorte('')">
+      <span>Cierres</span>
+      <strong>{{ conteo().cierres }}</strong>
+    </button>
+    <button type="button" class="evi-kpi ok" [class.activo]="corte() === 'EXITOSO'" [attr.aria-pressed]="corte() === 'EXITOSO'" (click)="fijarCorte('EXITOSO')">
+      <span>Entregados</span>
+      <strong>{{ conteo().exitosos }}</strong>
+    </button>
+    <button type="button" class="evi-kpi error" [class.activo]="corte() === 'FALLIDO'" [attr.aria-pressed]="corte() === 'FALLIDO'" (click)="fijarCorte('FALLIDO')">
+      <span>Fallidos</span>
+      <strong>{{ conteo().fallidos }}</strong>
+    </button>
+    <button type="button" class="evi-kpi aviso" [class.activo]="corte() === 'PENDIENTE'" [attr.aria-pressed]="corte() === 'PENDIENTE'" (click)="fijarCorte('PENDIENTE')">
+      <span>Por entregar</span>
+      <strong>{{ conteo().pendientes }}</strong>
+    </button>
+  </section>
+
+  <div class="evi-cuerpo">
+    <section class="prog-card evi-col">
+      <div class="evi-col-head">
+        <div>
+          <h2>Paradas</h2>
+          <p>{{ fechaCorta(fecha()) }} · las que faltan por foto van primero</p>
+        </div>
+        <button type="button" class="evi-ruta" [class.activo]="corte() === 'EN_PROCESO'" (click)="fijarCorte(corte() === 'EN_PROCESO' ? '' : 'EN_PROCESO')">
+          En ruta {{ conteo().enRuta }}
+        </button>
+      </div>
+      @if (cargando()) {
+        <p class="vacio-texto">Cargando las paradas del día…</p>
+      } @else {
+        <div class="evi-lista">
+          @for (destino of lista(); track destino.id) {
+            <button type="button" class="evi-item" [class.activo]="destinoId() === destino.id" [attr.aria-current]="destinoId() === destino.id ? 'true' : null" (click)="elegir(destino.id)">
+              <span class="evi-item-top">
+                <strong>{{ destino.codigo_externo || 'Sin código' }}</strong>
+                <span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span>
+              </span>
+              <span class="evi-item-nombre">{{ nombre(destino) }}</span>
+              <span class="evi-item-dir">{{ destino.direccion }}{{ destino.distrito ? ', ' + destino.distrito : '' }}</span>
+              <span class="evi-item-meta">
+                <span>
+                  {{ etiquetaTipo(destino.tipo_servicio) }}
+                  @if (rutaDe(destino); as ruta) { · {{ codigo(ruta) }} }
+                </span>
+                @if (fotosDe(destino.id); as fotos) {
+                  <span>{{ fotos.length }} {{ fotos.length === 1 ? 'foto' : 'fotos' }}</span>
+                }
+              </span>
+            </button>
+          } @empty {
+            <p class="vacio-texto">No hay paradas en este corte. Prueba otro día, cliente o estado.</p>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="prog-card evi-col evi-detalle">
+      @if (destinoActual(); as destino) {
+        <div class="evi-detalle-head">
+          <div>
+            <p class="evi-kicker">{{ destino.codigo_externo || 'Sin código' }} · {{ etiquetaTipo(destino.tipo_servicio) }}</p>
+            <h2>{{ nombre(destino) }}</h2>
+            <p>{{ destino.direccion }}{{ destino.distrito ? ', ' + destino.distrito : '' }}</p>
+          </div>
+          <span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span>
+        </div>
+
+        <div class="evi-nav">
+          <button type="button" class="prog-btn prog-btn-linea prog-btn-sm" (click)="mover(-1)" [disabled]="indice() <= 0">Anterior</button>
+          <span>{{ indice() + 1 }} de {{ lista().length }}</span>
+          <button type="button" class="prog-btn prog-btn-linea prog-btn-sm" (click)="mover(1)" [disabled]="indice() < 0 || indice() >= lista().length - 1">Siguiente</button>
+        </div>
+
+        <dl class="evi-datos">
+          <div><dt>Documento</dt><dd>{{ destino.documento_receptor || '—' }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ destino.telefono_receptor || '—' }}</dd></div>
+          <div><dt>Referencia</dt><dd>{{ destino.referencia || '—' }}</dd></div>
+          <div><dt>Ruta</dt><dd>{{ rutaActual() ? codigo(rutaActual()!) : 'Sin ruta' }}</dd></div>
+          <div><dt>Conductor</dt><dd>{{ nombrePersona(rutaActual()?.conductor) }}</dd></div>
+          <div><dt>Unidad</dt><dd>{{ rutaActual()?.vehiculo?.placa || '—' }}</dd></div>
+        </dl>
+
+        @if (destino.observacion_cierre || destino.motivo_descripcion) {
+          <div class="evi-nota">
+            @if (destino.motivo_descripcion) {
+              <p><span>Motivo</span> {{ destino.motivo_descripcion }}</p>
+            }
+            @if (destino.observacion_cierre) {
+              <p><span>Observación</span> {{ destino.observacion_cierre }}</p>
+            }
+          </div>
+        }
+
+        @if (errorFotos()) { <div class="alert alert-error">{{ errorFotos() }}</div> }
+
+        @if (cargandoFotos()) {
+          <div class="evi-galeria" aria-hidden="true">
+            @for (hueco of [1, 2, 3, 4]; track hueco) {
+              <span class="evi-esqueleto"></span>
+            }
+          </div>
+          <p class="evi-ayuda">Cargando fotos…</p>
+        } @else if (evidencias().length) {
+          <div class="evi-galeria">
+            @for (foto of evidencias(); track foto.id; let indice = $index) {
+              <button type="button" class="evi-foto" (click)="abrirFoto(indice)" [attr.aria-label]="'Abrir evidencia ' + (indice + 1) + ' de ' + evidencias().length">
+                <img [src]="foto.archivo" [alt]="'Evidencia del ' + fechaHora(foto.creado_en)" />
+                <span>{{ fechaHora(foto.creado_en) }}</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="evi-vacio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10" r="1.3" /><path stroke-linecap="round" stroke-linejoin="round" d="m7 16 3.1-3.1a1 1 0 0 1 1.4 0L15.5 17" /></svg>
+            <p>{{ textoVacio(destino) }}</p>
+          </div>
+        }
+      } @else {
+        <div class="evi-vacio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10" r="1.3" /><path stroke-linecap="round" stroke-linejoin="round" d="m7 16 3.1-3.1a1 1 0 0 1 1.4 0L15.5 17" /></svg>
+          <p>{{ cargando() ? 'Cargando las evidencias del día…' : 'No hay una parada para mostrar con estos filtros.' }}</p>
+        </div>
+      }
+    </section>
+  </div>
+</div>
+
+@if (fotoActual(); as foto) {
+  <div class="evi-visor" role="dialog" aria-modal="true" aria-label="Foto de evidencia" (click)="cerrarFoto()">
+    <div class="evi-visor-bar" (click)="$event.stopPropagation()">
+      <p>{{ (fotoAbierta() ?? 0) + 1 }} de {{ evidencias().length }} · {{ fechaHora(foto.creado_en) }}</p>
+      <div class="evi-visor-acciones">
+        <a [href]="foto.archivo" target="_blank" rel="noopener">Abrir original</a>
+        <button #cierreFoto type="button" (click)="cerrarFoto()">Cerrar</button>
+      </div>
+    </div>
+    <div class="evi-visor-escena">
+      <button type="button" class="evi-visor-nav prev" (click)="$event.stopPropagation(); pasarFoto(-1)" [disabled]="evidencias().length < 2" aria-label="Foto anterior">‹</button>
+      <img [src]="foto.archivo" [alt]="'Evidencia del ' + fechaHora(foto.creado_en)" (click)="$event.stopPropagation()" />
+      <button type="button" class="evi-visor-nav next" (click)="$event.stopPropagation(); pasarFoto(1)" [disabled]="evidencias().length < 2" aria-label="Foto siguiente">›</button>
+    </div>
+    <p class="evi-visor-pie" (click)="$event.stopPropagation()">{{ nombreArchivo(foto.archivo) }} · Flechas para pasar · Esc para cerrar</p>
+  </div>
+}

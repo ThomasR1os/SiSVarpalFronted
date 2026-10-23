@@ -16,7 +16,7 @@ import {
 import { Badge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
 import { Mapa } from '../../shared/mapa/mapa';
-import { lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
+import { lineaGeo, lineaParadas, marcasRuta } from '../../shared/mapa/marcas';
 import { CerrarParada } from './cerrar-parada';
 import { CorregirCierre } from './corregir-cierre';
 
@@ -137,14 +137,22 @@ import { CorregirCierre } from './corregir-cierre';
         }
 
         <div class="flex flex-col gap-2">
+          @if (editable()) {
+            <p class="ayuda">Arrastra una parada para cambiar su lugar. Después pulsa Guardar orden.</p>
+          }
           @for (parada of paradasLocal(); track parada.destino_id; let indice = $index) {
-            <div class="parada">
+            <div class="parada" [class.arrastrable]="editable()" [class.arrastrando]="arrastre() === indice" [class.soltar]="sobre() === indice && arrastre() !== indice" [attr.draggable]="editable() ? true : null" (dragstart)="iniciarArrastre($event, indice)" (dragover)="sobreArrastre($event, indice)" (drop)="soltarArrastre($event, indice)" (dragend)="terminarArrastre()">
               <div class="flex w-full flex-wrap items-center gap-2">
+                @if (editable()) {
+                  <span class="parada-asa" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" /><circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" /></svg>
+                  </span>
+                }
                 <strong>{{ indice + 1 }}. {{ parada.codigo_externo }}</strong>
                 <app-badge [estado]="parada.estado" />
                 <span class="ayuda">{{ etiquetaTipo(parada.tipo_servicio) }}</span>
                 @if (editable() || puedeParadas()) {
-                  <span class="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto">
+                  <span class="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto" (dragstart)="$event.preventDefault()">
                     @if (editable()) {
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, -1)" [disabled]="indice === 0">Subir</button>
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, 1)" [disabled]="indice === paradasLocal().length - 1">Bajar</button>
@@ -254,6 +262,8 @@ export class RutaDetalle {
   protected readonly nombrePersona = nombrePersona;
   protected readonly etiquetaTipo = etiquetaTipo;
   protected readonly paradasLocal = signal<Ruta['paradas']>([]);
+  protected readonly arrastre = signal<number | null>(null);
+  protected readonly sobre = signal<number | null>(null);
   protected readonly catalogo = signal<CatalogoRuta | null>(null);
   protected readonly disponibles = signal<Destino[]>([]);
   protected readonly auxiliares = signal<number[]>([]);
@@ -281,7 +291,14 @@ export class RutaDetalle {
     () => this.modo() === 'admin' && this.ruta().estado === 'EN_PROCESO',
   );
   protected readonly todasCerradas = computed(() => paradasCerradas(this.ruta().paradas));
-  protected readonly geometria = computed(() => lineaGeo(this.ruta().geometria_empresa));
+  protected readonly geometria = computed(() => {
+    const ruta = this.ruta();
+    const local = this.paradasLocal();
+    const guardado = [...ruta.paradas].sort((a, b) => a.orden - b.orden).map((parada) => parada.destino_id).join(',');
+    const actual = local.map((parada) => parada.destino_id).join(',');
+    if (!local.length || actual === guardado) return lineaGeo(ruta.geometria_empresa);
+    return lineaParadas({ paradas: local, origen: ruta.base_origen, final: ruta.base_final });
+  });
   protected readonly encuadre = computed(() => {
     const ruta = this.ruta();
     const puntos = ruta.paradas.map((parada) => `${parada.latitud},${parada.longitud}`).join('|');
@@ -365,7 +382,47 @@ export class RutaDetalle {
     const [item] = lista.splice(indice, 1);
     if (!item) return;
     lista.splice(destino, 0, item);
-    this.paradasLocal.set(lista);
+    this.colocar(lista);
+  }
+
+  iniciarArrastre(event: DragEvent, indice: number): void {
+    if (!this.editable()) {
+      event.preventDefault();
+      return;
+    }
+    this.arrastre.set(indice);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(indice));
+    }
+  }
+
+  sobreArrastre(event: DragEvent, indice: number): void {
+    if (!this.editable() || this.arrastre() == null) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    this.sobre.set(indice);
+  }
+
+  soltarArrastre(event: DragEvent, indice: number): void {
+    event.preventDefault();
+    const origen = this.arrastre();
+    this.terminarArrastre();
+    if (origen == null || origen === indice) return;
+    const lista = [...this.paradasLocal()];
+    const [item] = lista.splice(origen, 1);
+    if (!item) return;
+    lista.splice(indice, 0, item);
+    this.colocar(lista);
+  }
+
+  terminarArrastre(): void {
+    this.arrastre.set(null);
+    this.sobre.set(null);
+  }
+
+  private colocar(lista: Ruta['paradas']): void {
+    this.paradasLocal.set(lista.map((parada, indice) => ({ ...parada, orden: indice + 1 })));
   }
 
   guardarOrden(): void {

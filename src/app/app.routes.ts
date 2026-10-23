@@ -3,6 +3,7 @@ import { entradaGuard, rolGuard, sesionGuard } from './core/auth.guard';
 import { AdminShell } from './features/admin/admin-shell';
 import { Configuracion } from './features/admin/configuracion';
 import { MapaVivo } from './features/admin/mapa-vivo';
+import { EvidenciasAdmin } from './features/admin/evidencias';
 import { Operacion } from './features/admin/operacion';
 import { PanelRuta, SeccionPendiente } from './features/admin/panel-ruta';
 import { ClienteAyuda } from './features/cliente/cliente-ayuda';
@@ -33,7 +34,7 @@ export const routes: Routes = [
       { path: 'operacion', pathMatch: 'full', redirectTo: 'programacion' },
       { path: 'seguimiento', component: MapaVivo },
       { path: 'mapa', pathMatch: 'full', redirectTo: 'seguimiento' },
-      { path: 'evidencias', component: SeccionPendiente },
+      { path: 'evidencias', component: EvidenciasAdmin },
       { path: 'servicios', component: SeccionPendiente },
       { path: 'planilla', component: SeccionPendiente },
       { path: 'flota', component: PanelRuta, data: { modulo: 'flota' } },

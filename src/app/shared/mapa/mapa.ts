@@ -25,6 +25,8 @@ export class Mapa {
   private grupo: L.LayerGroup | null = null;
   private observador: ResizeObserver | null = null;
   private ultimoEncuadre = '\u0000';
+  private marcaPopup: string | null = null;
+  private popupGen = 0;
 
   constructor() {
     afterNextRender(() => this.iniciar());
@@ -66,6 +68,8 @@ export class Mapa {
 
   private pintar(): void {
     if (!this.map || !this.grupo) return;
+    const reabrir = this.marcaPopup;
+    const popupGen = ++this.popupGen;
     this.grupo.clearLayers();
     const puntos: L.LatLngExpression[] = [];
 
@@ -99,6 +103,7 @@ export class Mapa {
       ).addTo(this.grupo);
     }
 
+    let markerAbierto: L.Marker | null = null;
     for (const marca of this.marcas()) {
       if (!Number.isFinite(marca.lat) || !Number.isFinite(marca.lng)) continue;
       const icono = L.divIcon({
@@ -106,8 +111,24 @@ export class Mapa {
         html: htmlMarca(marca),
         iconSize: [32, 32],
         iconAnchor: [16, 16],
+        popupAnchor: [0, -18],
       });
       const marker = L.marker([marca.lat, marca.lng], { icon: icono, title: marca.titulo });
+      if (marca.detalle) {
+        marker.bindPopup(`<span class="pin-popup">${esc(marca.detalle)}</span>`, {
+          closeButton: true,
+          maxWidth: 280,
+          className: 'popup-parada',
+        });
+        marker.on('popupopen', () => {
+          if (popupGen === this.popupGen) this.marcaPopup = marca.id;
+        });
+        marker.on('popupclose', () => {
+          if (popupGen !== this.popupGen) return;
+          if (this.marcaPopup === marca.id) this.marcaPopup = null;
+        });
+        if (reabrir === marca.id) markerAbierto = marker;
+      }
       marker.on('click', () => this.marcaClick.emit(marca.id));
       marker.addTo(this.grupo);
       puntos.push([marca.lat, marca.lng]);
@@ -122,6 +143,7 @@ export class Mapa {
         this.map.setView([-12.0464, -77.0428], 12);
       }
     }
+    if (markerAbierto) markerAbierto.openPopup();
     this.map.invalidateSize();
   }
 }
