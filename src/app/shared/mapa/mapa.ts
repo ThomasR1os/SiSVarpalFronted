@@ -117,7 +117,7 @@ export class Mapa {
       if (marca.detalle) {
         marker.bindPopup(`<span class="pin-popup">${esc(marca.detalle)}</span>`, {
           closeButton: true,
-          maxWidth: 280,
+          maxWidth: 520,
           className: 'popup-parada',
         });
         marker.on('popupopen', () => {

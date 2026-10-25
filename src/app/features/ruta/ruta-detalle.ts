@@ -72,17 +72,39 @@ import { CorregirCierre } from './corregir-cierre';
             </label>
             <label class="control">Base de origen
               <select formControlName="base_origen_id">
-                <option value="">Dirección principal del cliente</option>
-                @for (punto of catalogo()?.origenes ?? []; track punto.id) {
-                  <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                <option value="">Elige una base</option>
+                @if (catalogo()?.basesVarpal?.length) {
+                  <optgroup label="Varpal">
+                    @for (punto of catalogo()?.basesVarpal ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (catalogo()?.basesCliente?.length) {
+                  <optgroup [label]="ruta.cliente_nombre || 'Cliente'">
+                    @for (punto of catalogo()?.basesCliente ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                    }
+                  </optgroup>
                 }
               </select>
             </label>
             <label class="control">Base final
               <select formControlName="base_final_id">
-                <option value="">Dirección principal de Varpal</option>
-                @for (punto of catalogo()?.finales ?? []; track punto.id) {
-                  <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                <option value="">Elige una base</option>
+                @if (catalogo()?.basesVarpal?.length) {
+                  <optgroup label="Varpal">
+                    @for (punto of catalogo()?.basesVarpal ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (catalogo()?.basesCliente?.length) {
+                  <optgroup [label]="ruta.cliente_nombre || 'Cliente'">
+                    @for (punto of catalogo()?.basesCliente ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }} · {{ punto.direccion }}</option>
+                    }
+                  </optgroup>
                 }
               </select>
             </label>

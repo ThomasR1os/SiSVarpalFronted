@@ -173,6 +173,7 @@ export class MapaVivo {
                 nombre: parada.nombre_receptor.trim(),
                 apellido: parada.apellido_receptor.trim(),
                 documento: '',
+                codigo: parada.codigo_externo.trim(),
                 tipo: parada.tipo_servicio,
               });
             }
@@ -262,6 +263,7 @@ interface FichaParada {
   nombre: string;
   apellido: string;
   documento: string;
+  codigo: string;
   tipo: string;
 }
 
@@ -336,6 +338,7 @@ function fusionarFichas(
         nombre: parada.nombre_receptor.trim(),
         apellido: (parada.apellido_receptor ?? '').trim(),
         documento: (parada.documento_receptor ?? '').trim(),
+        codigo: parada.codigo_externo.trim(),
         tipo: parada.tipo_servicio ?? '',
       });
     }
@@ -346,6 +349,7 @@ function fusionarFichas(
       nombre: ficha.nombre || previa?.nombre || '',
       apellido: ficha.apellido || previa?.apellido || '',
       documento: previa?.documento || ficha.documento,
+      codigo: ficha.codigo || previa?.codigo || '',
       tipo: ficha.tipo || previa?.tipo || '',
     });
   }
@@ -355,6 +359,7 @@ function fusionarFichas(
       nombre: destino.nombre_receptor.trim() || previa?.nombre || '',
       apellido: destino.apellido_receptor.trim() || previa?.apellido || '',
       documento: destino.documento_receptor.trim() || previa?.documento || '',
+      codigo: destino.codigo_externo.trim() || previa?.codigo || '',
       tipo: destino.tipo_servicio || previa?.tipo || '',
     });
   }
@@ -373,6 +378,7 @@ function textoParada(
 ): string {
   const propia = fichas.get(parada.destino_id);
   const documento = propia?.documento ?? '';
+  const codigo = (propia?.codigo || parada.codigo_externo).trim();
   const tipos = new Set<string>();
   if (propia?.tipo) tipos.add(propia.tipo);
   for (const otra of paradas) {
@@ -380,14 +386,19 @@ function textoParada(
     const ficha = fichas.get(otra.destino_id);
     if (!ficha?.tipo || !mismoLugar(parada, otra)) continue;
     const mismoDocumento = !!documento && ficha.documento === documento;
-    const mismoCodigo = !!parada.codigo_externo && parada.codigo_externo === otra.codigo_externo;
+    const mismoCodigo = !!codigo && (ficha.codigo || otra.codigo_externo).trim() === codigo;
     if (mismoDocumento || mismoCodigo) tipos.add(ficha.tipo);
   }
   const conceptos = [...tipos].sort(compararTipo).map((tipo) => etiquetaTipo(tipo)).join(' · ');
-  const partes = [nombreVisible(parada, propia)];
-  if (documento) partes.push(documento);
+  const partes = [nombreEtiqueta(parada, propia)];
+  if (codigo) partes.push(codigo);
   if (conceptos) partes.push(conceptos);
-  return partes.join(' - ');
+  return partes.join('\u00A0-\u00A0');
+}
+
+function nombreEtiqueta(parada: ParadaSeguimiento, ficha: FichaParada | undefined): string {
+  const completo = ficha ? `${ficha.nombre} ${ficha.apellido}`.trim() : `${parada.nombre_receptor} ${parada.apellido_receptor ?? ''}`.trim();
+  return completo || parada.direccion.trim() || 'Sin nombre';
 }
 
 function mismoLugar(

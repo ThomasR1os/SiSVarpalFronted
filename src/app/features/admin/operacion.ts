@@ -887,9 +887,28 @@ export class Operacion {
 
   private cargarCatalogo(clienteId: number): void {
     this.catalogos.paraRuta(clienteId).subscribe({
-      next: (catalogo) => this.catalogo.set(catalogo),
+      next: (catalogo) => {
+        this.catalogo.set(catalogo);
+        this.aplicarBasesPorDefecto(catalogo);
+      },
       error: (err: unknown) => this.error.set(mensajeError(err)),
     });
+  }
+
+  private aplicarBasesPorDefecto(catalogo: CatalogoRuta): void {
+    const raw = this.rutaForm.getRawValue();
+    const parche: { base_origen_id?: string; base_final_id?: string } = {};
+    if (!raw.base_origen_id) {
+      const origen = catalogo.basesCliente.find((punto) => punto.es_principal);
+      if (origen) parche.base_origen_id = String(origen.id);
+    }
+    if (!raw.base_final_id) {
+      const final = catalogo.basesVarpal.find((punto) => punto.es_principal) ?? catalogo.basesVarpal[0];
+      if (final) parche.base_final_id = String(final.id);
+    }
+    if (!parche.base_origen_id && !parche.base_final_id) return;
+    this.rutaForm.patchValue(parche);
+    this.sincronizarAsignacion();
   }
 
   private marcarArchivo(archivo: File | null): void {

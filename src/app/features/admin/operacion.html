@@ -269,25 +269,47 @@
           <label class="prog-campo">Hora de salida
             <input type="time" [value]="horaSalida()" (change)="cambiarHora($event)" />
           </label>
-          <details class="prog-bases">
-            <summary>Bases de origen y llegada</summary>
+          <div class="prog-bases">
+            <p class="prog-bases-titulo">Bases de origen y llegada</p>
             <label class="prog-campo">Base de origen
               <select formControlName="base_origen_id" (change)="elegirAsignacion('base_origen_id', $event)">
-                <option value="">Dirección principal del cliente</option>
-                @for (punto of catalogo()?.origenes ?? []; track punto.id) {
-                  <option [value]="punto.id">{{ punto.nombre }}</option>
+                <option value="">Elige una base</option>
+                @if (catalogo()?.basesVarpal?.length) {
+                  <optgroup label="Varpal">
+                    @for (punto of catalogo()?.basesVarpal ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (catalogo()?.basesCliente?.length) {
+                  <optgroup [label]="clienteActual()?.nombre_comercial || clienteActual()?.razon_social || 'Cliente'">
+                    @for (punto of catalogo()?.basesCliente ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }}</option>
+                    }
+                  </optgroup>
                 }
               </select>
             </label>
             <label class="prog-campo">Base final
               <select formControlName="base_final_id" (change)="elegirAsignacion('base_final_id', $event)">
-                <option value="">Dirección principal de Varpal</option>
-                @for (punto of catalogo()?.finales ?? []; track punto.id) {
-                  <option [value]="punto.id">{{ punto.nombre }}</option>
+                <option value="">Elige una base</option>
+                @if (catalogo()?.basesVarpal?.length) {
+                  <optgroup label="Varpal">
+                    @for (punto of catalogo()?.basesVarpal ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (catalogo()?.basesCliente?.length) {
+                  <optgroup [label]="clienteActual()?.nombre_comercial || clienteActual()?.razon_social || 'Cliente'">
+                    @for (punto of catalogo()?.basesCliente ?? []; track punto.id) {
+                      <option [value]="punto.id">{{ punto.nombre }}</option>
+                    }
+                  </optgroup>
                 }
               </select>
             </label>
-          </details>
+          </div>
           <label class="prog-opt" [class.activa]="modoAsignacion() === 'optimizacion'">
             <input type="checkbox" class="sr-only" [checked]="modoAsignacion() === 'optimizacion'" (change)="alternarOptimizacion($event)" />
             <span class="prog-switch" aria-hidden="true"><span></span></span>

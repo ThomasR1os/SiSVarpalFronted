@@ -1040,8 +1040,8 @@
     color: #66758a;
     font-size: 0.82rem;
   }
-  .prog-bases summary {
-    cursor: pointer;
+  .prog-bases-titulo {
+    margin: 0;
     font-weight: 700;
   }
   .prog-preview {
@@ -1310,15 +1310,16 @@ app-mapa,
   color: white;
 }
 .leaflet-popup.popup-parada .leaflet-popup-content {
-  margin: 0.7rem 0.9rem;
+  margin: 0.65rem 1.35rem 0.65rem 0.85rem;
+  width: auto !important;
+  white-space: nowrap;
 }
 .pin-popup {
-  display: block;
-  max-width: 16rem;
+  display: inline;
   color: #0b1e3a;
   font-size: 0.875rem;
-  line-height: 1.4;
-  white-space: normal;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 @media (min-width: 720px) {

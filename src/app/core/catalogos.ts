@@ -8,6 +8,8 @@ export interface CatalogoRuta {
   conductores: Usuario[];
   auxiliares: Usuario[];
   vehiculos: Vehiculo[];
+  basesVarpal: Punto[];
+  basesCliente: Punto[];
   origenes: Punto[];
   finales: Punto[];
 }
@@ -43,13 +45,27 @@ export class Catalogos {
         page_size: TAMANO_CATALOGO,
       }),
     }).pipe(
-      map((res) => ({
-        conductores: res.conductores.results,
-        auxiliares: res.auxiliares.results,
-        vehiculos: res.vehiculos.results,
-        origenes: res.puntosCliente.results.filter((p) => p.es_base_origen || p.es_principal),
-        finales: res.puntosVarpal.results.filter((p) => p.es_base_final || p.es_principal),
-      })),
+      map((res) => {
+        const basesVarpal = ordenarBases(res.puntosVarpal.results);
+        const basesCliente = ordenarBases(res.puntosCliente.results);
+        const todas = [...basesVarpal, ...basesCliente];
+        return {
+          conductores: res.conductores.results,
+          auxiliares: res.auxiliares.results,
+          vehiculos: res.vehiculos.results,
+          basesVarpal,
+          basesCliente,
+          origenes: todas,
+          finales: todas,
+        };
+      }),
     );
   }
+}
+
+function ordenarBases(puntos: Punto[]): Punto[] {
+  return [...puntos].sort((a, b) => {
+    if (a.es_principal !== b.es_principal) return a.es_principal ? -1 : 1;
+    return a.nombre.localeCompare(b.nombre, 'es');
+  });
 }
