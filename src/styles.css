@@ -1119,19 +1119,30 @@
     padding-right: 0.2rem;
   }
   .prog-ruta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.55rem 0.7rem 0.55rem 0.35rem;
+    border: 1px solid #e4edf6;
+    border-radius: 0.9rem;
+    background: #fff;
+  }
+  .prog-ruta-main {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0.75rem 1rem;
-    width: 100%;
-    padding: 0.8rem 0.9rem;
-    border: 1px solid #e4edf6;
-    border-radius: 0.9rem;
-    background: #fff;
+    flex: 1;
+    min-width: 0;
+    padding: 0.25rem 0.4rem;
+    border: 0;
+    background: transparent;
     text-align: left;
     cursor: pointer;
   }
-  .prog-ruta:hover {
+  .prog-ruta:hover,
+  .prog-ruta-main:hover {
     border-color: #b9d0ee;
     background: #f8fbff;
   }
@@ -1191,8 +1202,13 @@
   .prog-carga,
   .prog-carga-lado,
   .prog-grid,
-  .prog-ruta {
+  .prog-ruta,
+  .prog-ruta-main {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .prog-ruta {
+    align-items: stretch;
+    flex-direction: column;
   }
   .prog-carga-acciones,
   .prog-ruta-abrir {

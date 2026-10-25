@@ -52,7 +52,7 @@
 
   @if (rutaAbierta(); as ruta) {
     <section class="prog-card prog-detalle">
-      <app-ruta-detalle [ruta]="ruta" modo="admin" (cambio)="actualizarRuta($event)" (cerrada)="volverAlListado()" />
+      <app-ruta-detalle [ruta]="ruta" modo="admin" (cambio)="actualizarRuta($event)" (cerrada)="volverAlListado()" (eliminada)="alEliminarRuta()" />
     </section>
   } @else {
     <section class="prog-card prog-carga">
@@ -182,8 +182,8 @@
                     <td data-label="Distrito">{{ destino.distrito }}</td>
                     <td data-label="Estado"><span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span></td>
                     <td class="acciones" data-label="Acciones">
-                      @if (destino.estado === 'NO_INICIADO' || destino.estado === 'EN_PROCESO') {
-                        <div class="prog-acciones">
+                      <div class="prog-acciones">
+                        @if (destino.estado === 'NO_INICIADO' || destino.estado === 'EN_PROCESO') {
                           <button type="button" class="prog-accion" (click)="editarDestino(destino)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20h4.2L19.4 8.8a1.6 1.6 0 0 0 0-2.3l-1.9-1.9a1.6 1.6 0 0 0-2.3 0L4 15.8V20z" /><path stroke-linecap="round" d="M13.5 6.3 17.7 10.5" /></svg>
                             Editar
@@ -192,12 +192,12 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path stroke-linecap="round" d="m7.5 7.5 9 9" /></svg>
                             Inhabilitar
                           </button>
-                          <button type="button" class="prog-accion peligro" (click)="abrirEliminar(destino)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M5 7.5h14" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 7.4V5.8A1.3 1.3 0 0 1 10.8 4.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.6M8 7.5l.7 11.2a1.2 1.2 0 0 0 1.2 1.1h4.2a1.2 1.2 0 0 0 1.2-1.1L16 7.5" /></svg>
-                            Quitar
-                          </button>
-                        </div>
-                      }
+                        }
+                        <button type="button" class="prog-accion peligro" (click)="abrirEliminar(destino)">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M5 7.5h14" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 7.4V5.8A1.3 1.3 0 0 1 10.8 4.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.6M8 7.5l.7 11.2a1.2 1.2 0 0 0 1.2 1.1h4.2a1.2 1.2 0 0 0 1.2-1.1L16 7.5" /></svg>
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -372,15 +372,18 @@
       @if (verRutas()) {
         <div class="lista-rutas prog-lista-rutas">
           @for (ruta of rutas(); track ruta.id) {
-            <button type="button" class="prog-ruta" (click)="abrirRuta(ruta.id)">
-              <span class="prog-ruta-id">#{{ ruta.id }}</span>
-              <span class="prog-ruta-datos">
-                <strong>{{ ruta.cliente_nombre }}</strong>
-                <span>{{ nombrePersona(ruta.conductor) }} · {{ ruta.vehiculo?.placa || 'Sin vehículo' }} · {{ ruta.paradas.length }} paradas</span>
-              </span>
-              <app-badge [estado]="ruta.estado" />
-              <span class="prog-ruta-abrir">Abrir</span>
-            </button>
+            <div class="prog-ruta">
+              <button type="button" class="prog-ruta-main" (click)="abrirRuta(ruta.id)">
+                <span class="prog-ruta-id">#{{ ruta.id }}</span>
+                <span class="prog-ruta-datos">
+                  <strong>{{ ruta.cliente_nombre }}</strong>
+                  <span>{{ nombrePersona(ruta.conductor) }} · {{ ruta.vehiculo?.placa || 'Sin vehículo' }} · {{ ruta.paradas.length }} paradas</span>
+                </span>
+                <app-badge [estado]="ruta.estado" />
+                <span class="prog-ruta-abrir">Abrir</span>
+              </button>
+              <button type="button" class="prog-accion peligro" (click)="pedirEliminarRuta(ruta)">Eliminar</button>
+            </div>
           } @empty { <p class="vacio-texto">No hay rutas en esta fecha.</p> }
         </div>
       }
@@ -456,20 +459,23 @@
 }
 
 @if (dialogo() === 'eliminar') {
-  <app-modal [titulo]="rutaAccion() ? 'Quitar parada' : 'Eliminar destino'" (cerrar)="dialogo.set('')">
+  <app-modal titulo="Eliminar destino" (cerrar)="dialogo.set('')">
     <div class="flex flex-col gap-4">
-      <div class="alert alert-warning">{{ textoEliminar() }}</div>
+      <div class="alert alert-warning">Se borrará este destino. Si está en una ruta, sale de ella. No se puede deshacer.</div>
       @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
-      <p>
-        @if (rutaAccion()) {
-          {{ editando()?.codigo_externo }} saldrá de la ruta {{ rutaAccion()?.id }}.
-        } @else {
-          Se eliminará el destino {{ editando()?.codigo_externo }}.
-        }
-      </p>
-      <button type="button" class="btn btn-error" (click)="confirmarEliminar()" [disabled]="enviando()">
-        {{ rutaAccion() ? 'Quitar de la ruta' : 'Eliminar destino' }}
-      </button>
+      <p>Se eliminará el destino {{ editando()?.codigo_externo }}.</p>
+      <button type="button" class="btn btn-error" (click)="confirmarEliminar()" [disabled]="enviando()">Eliminar destino</button>
+    </div>
+  </app-modal>
+}
+
+@if (dialogo() === 'eliminarRuta') {
+  <app-modal titulo="Eliminar ruta" (cerrar)="dialogo.set('')">
+    <div class="flex flex-col gap-4">
+      <div class="alert alert-warning">Se borrará la ruta {{ rutaAccion()?.id }}. Los destinos que seguían en proceso quedan libres. Los que ya se cerraron se conservan y puedes eliminarlos aparte. No se puede deshacer.</div>
+      @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+      <p>¿Eliminar la ruta {{ rutaAccion()?.id }} de {{ rutaAccion()?.cliente_nombre }}?</p>
+      <button type="button" class="btn btn-error" (click)="confirmarEliminarRuta()" [disabled]="enviando()">Eliminar ruta</button>
     </div>
   </app-modal>
 }

@@ -38,6 +38,15 @@ function esFoto(archivo: File): boolean {
         </a>
       </div>
 
+      <div class="flex flex-col gap-2 rounded-box border border-dashed border-azul/30 bg-azul/5 p-3">
+        <button type="button" class="btn min-h-12 justify-start gap-2 rounded-xl border-azul/30 bg-base-100" (click)="georeferenciar()" [disabled]="ubicando() || enviando()">
+          <app-icono nombre="pin" class="size-5 text-primary" />
+          {{ ubicando() ? 'Leyendo ubicación…' : 'Georeferenciar' }}
+        </button>
+        <p class="text-xs text-base-content/65">Si el mapa marca otro lugar, guarda el punto donde estás ahora. El pin y la ruta pasan a esa ubicación.</p>
+        @if (ubicacionGuardada()) { <p class="text-sm font-medium text-success">Ubicación guardada. El mapa ya usa este punto.</p> }
+      </div>
+
       <div class="flex flex-col gap-3 rounded-box bg-base-200 p-3">
         <p class="flex items-center gap-2 font-semibold">
           <app-icono nombre="camara" class="size-5 text-primary" />
@@ -120,6 +129,7 @@ function esFoto(archivo: File): boolean {
 export class CerrarParada {
   readonly parada = input.required<Parada>();
   readonly cerrado = output<void>();
+  readonly georeferenciada = output<void>();
 
   private readonly api = inject(Api);
   private readonly fb = inject(FormBuilder);
@@ -131,6 +141,8 @@ export class CerrarParada {
   protected readonly largo = signal(0);
   protected readonly error = signal('');
   protected readonly enviando = signal(false);
+  protected readonly ubicando = signal(false);
+  protected readonly ubicacionGuardada = signal(false);
   private archivos: File[] = [];
   protected readonly form = this.fb.nonNullable.group({
     motivo_id: [''],
@@ -179,6 +191,39 @@ export class CerrarParada {
     if (vista) URL.revokeObjectURL(vista.url);
     this.archivos = this.archivos.filter((_, i) => i !== indice);
     this.vistas.update((actual) => actual.filter((_, i) => i !== indice));
+  }
+
+  georeferenciar(): void {
+    if (!navigator.geolocation) {
+      this.error.set('Este equipo no puede leer la ubicación.');
+      return;
+    }
+    this.ubicando.set(true);
+    this.ubicacionGuardada.set(false);
+    this.error.set('');
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        this.api.post(`/api/destinos/${this.parada().destino_id}/georeferenciar/`, {
+          latitud: posicion.coords.latitude,
+          longitud: posicion.coords.longitude,
+        }).subscribe({
+          next: () => {
+            this.ubicando.set(false);
+            this.ubicacionGuardada.set(true);
+            this.georeferenciada.emit();
+          },
+          error: (err: unknown) => {
+            this.ubicando.set(false);
+            this.error.set(mensajeError(err));
+          },
+        });
+      },
+      () => {
+        this.ubicando.set(false);
+        this.error.set('No se pudo leer tu ubicación. Activa el GPS y vuelve a intentarlo.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
   }
 
   enviar(resultado: 'EXITOSO' | 'FALLIDO'): void {

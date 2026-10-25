@@ -223,7 +223,7 @@ export class ClienteEvidencias {
     const buscar = this.buscar().trim().toLowerCase();
     return this.destinos().filter((destino) => {
       const ruta = destino.ruta_id == null ? undefined : this.porRuta().get(destino.ruta_id);
-      if (!ruta || (zona === 'lima') !== ruta.dentro_de_lima) return false;
+      if (!ruta || ruta.estado === 'CANCELADA' || (zona === 'lima') !== ruta.dentro_de_lima) return false;
       const fecha = destino.fecha.slice(0, 10);
       if (desde && fecha < desde) return false;
       if (hasta && fecha > hasta) return false;

@@ -19,7 +19,7 @@ import { etiquetaZona } from './rutas-cliente';
       <div class="layout-operacion">
         <section class="card card-body bg-base-100 border border-base-300 shadow-sm">
           <h2>Rutas de tu RUC</h2>
-          <p class="ayuda">No ves borradores ni el regreso a la base de Varpal.</p>
+          <p class="ayuda">No ves borradores, rutas canceladas ni el regreso a la base de Varpal.</p>
           <div class="lista-rutas max-h-[18rem] overflow-auto lg:max-h-[min(72vh,680px)]">
             @for (ruta of rutas(); track ruta.id) {
               <button type="button" class="ruta-card" [class.activo]="seleccionId() === ruta.id" (click)="elegir(ruta.id)">
@@ -103,12 +103,13 @@ export class ClienteVista {
     return this.api.get<Pagina<Ruta>>('/api/rutas/', { page_size: 100 }).pipe(
       switchMap((pagina) => {
         const rutas = pagina.results
-          .filter((ruta) => ruta.estado !== 'BORRADOR')
+          .filter((ruta) => ruta.estado !== 'BORRADOR' && ruta.estado !== 'CANCELADA')
           .sort((a, b) => pesoRuta(a.estado) - pesoRuta(b.estado) || b.fecha.localeCompare(a.fecha));
         this.rutas.set(rutas);
         this.error.set('');
-        const id = this.seleccionId() ?? rutas[0]?.id ?? null;
-        if (id && this.seleccionId() == null) this.seleccionId.set(id);
+        const elegida = this.seleccionId();
+        const id = elegida != null && rutas.some((ruta) => ruta.id === elegida) ? elegida : rutas[0]?.id ?? null;
+        if (id !== elegida) this.seleccionId.set(id);
         if (!id) {
           this.seguimiento.set(null);
           return of(null);

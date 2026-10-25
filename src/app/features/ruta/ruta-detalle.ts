@@ -173,7 +173,7 @@ import { CorregirCierre } from './corregir-cierre';
                 <strong>{{ indice + 1 }}. {{ parada.codigo_externo }}</strong>
                 <app-badge [estado]="parada.estado" />
                 <span class="ayuda">{{ etiquetaTipo(parada.tipo_servicio) }}</span>
-                @if (editable() || puedeParadas()) {
+                @if (editable() || puedeParadas() || modo() === 'admin') {
                   <span class="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto" (dragstart)="$event.preventDefault()">
                     @if (editable()) {
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, -1)" [disabled]="indice === 0">Subir</button>
@@ -182,13 +182,16 @@ import { CorregirCierre } from './corregir-cierre';
                     @if (puedeParadas()) {
                       <button type="button" class="btn btn-error btn-outline btn-sm" (click)="pedirQuitar(parada.destino_id)" [disabled]="paradasLocal().length < 2">Quitar</button>
                     }
+                    @if (modo() === 'admin') {
+                      <button type="button" class="btn btn-error btn-outline btn-sm" (click)="pedirEliminarDestino(parada.destino_id)">Eliminar</button>
+                    }
                   </span>
                 }
               </div>
               <span>{{ parada.direccion }}, {{ parada.distrito }}</span>
               <span class="ayuda">{{ parada.nombre_receptor }} {{ parada.apellido_receptor }}</span>
               @if (parada.estado === 'EN_PROCESO' && (modo() === 'admin' || modo() === 'conductor')) {
-                <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" />
+                <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" (georeferenciada)="alGeoreferenciar()" />
               }
               @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'PENDIENTE') {
                 <span class="flex flex-wrap gap-1">
@@ -208,7 +211,7 @@ import { CorregirCierre } from './corregir-cierre';
             </div>
           }
         </div>
-        @if (puedeParadas() || (modo() === 'conductor' && ruta.estado === 'NO_INICIADA') || (ruta.estado === 'EN_PROCESO' && todasCerradas())) {
+        @if (modo() === 'admin' || puedeParadas() || (modo() === 'conductor' && ruta.estado === 'NO_INICIADA') || (ruta.estado === 'EN_PROCESO' && todasCerradas())) {
           <div class="acciones-pie">
             @if (editable()) {
               <button type="button" class="btn btn-outline" (click)="guardarOrden()" [disabled]="enviando()">Guardar orden</button>
@@ -223,6 +226,9 @@ import { CorregirCierre } from './corregir-cierre';
             }
             @if (puedeParadas()) {
               <button type="button" class="btn btn-error btn-outline" (click)="pedirInhabilitar()" [disabled]="enviando()">Inhabilitar ruta</button>
+            }
+            @if (modo() === 'admin') {
+              <button type="button" class="btn btn-error btn-outline" (click)="pedirEliminar()" [disabled]="enviando()">Eliminar ruta</button>
             }
             @if (ruta.estado === 'EN_PROCESO' && todasCerradas()) {
               <button type="button" class="btn btn-primary" (click)="llegada()" [disabled]="enviando()">Llegué a la base Varpal</button>
@@ -252,6 +258,26 @@ import { CorregirCierre } from './corregir-cierre';
         @if (correccion(); as paradaCorregir) {
           <app-corregir-cierre [parada]="paradaCorregir" (corregida)="alCorregir($event)" (cancelada)="correccion.set(null)" />
         }
+        @if (confirmacion() === 'eliminarDestino') {
+          <app-modal titulo="Eliminar destino" (cerrar)="confirmacion.set('')">
+            <div class="flex flex-col gap-4">
+              <div class="alert alert-warning">Se borrará este destino de la ruta {{ ruta.id }}. No se puede deshacer.</div>
+              @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+              <p>Se eliminará {{ etiquetaParada(paradaQuitar()) }}.</p>
+              <button type="button" class="btn btn-error" (click)="eliminarDestino()" [disabled]="enviando()">Eliminar destino</button>
+            </div>
+          </app-modal>
+        }
+        @if (confirmacion() === 'eliminar') {
+          <app-modal titulo="Eliminar ruta" (cerrar)="confirmacion.set('')">
+            <div class="flex flex-col gap-4">
+              <div class="alert alert-warning">Se borrará la ruta {{ ruta.id }}. Los destinos que seguían en proceso quedan libres. Los que ya se cerraron se conservan. No se puede deshacer.</div>
+              @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+              <p>¿Eliminar la ruta {{ ruta.id }}?</p>
+              <button type="button" class="btn btn-error" (click)="eliminarRuta()" [disabled]="enviando()">Eliminar ruta</button>
+            </div>
+          </app-modal>
+        }
         @if (confirmacion() === 'inhabilitar') {
           <app-modal titulo="Inhabilitar ruta" (cerrar)="confirmacion.set('')">
             <div class="flex flex-col gap-4">
@@ -272,6 +298,7 @@ export class RutaDetalle {
   readonly puedeIniciar = input(false);
   readonly cambio = output<Ruta>();
   readonly cerrada = output<void>();
+  readonly eliminada = output<void>();
 
   private readonly api = inject(Api);
   private readonly catalogos = inject(Catalogos);
@@ -292,7 +319,7 @@ export class RutaDetalle {
   protected readonly evidencias = signal<Record<number, Evidencia[]>>({});
   protected readonly nuevoDestino = signal('');
   protected readonly paradaQuitar = signal<number | null>(null);
-  protected readonly confirmacion = signal<'' | 'agregar' | 'quitar' | 'inhabilitar'>('');
+  protected readonly confirmacion = signal<'' | 'agregar' | 'quitar' | 'inhabilitar' | 'eliminar' | 'eliminarDestino'>('');
   protected readonly correccion = signal<Parada | null>(null);
   protected readonly error = signal('');
   protected readonly aviso = signal('');
@@ -574,6 +601,53 @@ export class RutaDetalle {
     this.accion('iniciar', 'Ruta iniciada. Los administradores reciben el aviso.');
   }
 
+  pedirEliminarDestino(destinoId: number): void {
+    if (this.modo() !== 'admin') return;
+    this.error.set('');
+    this.paradaQuitar.set(destinoId);
+    this.confirmacion.set('eliminarDestino');
+  }
+
+  eliminarDestino(): void {
+    const destinoId = this.paradaQuitar();
+    if (!destinoId || this.modo() !== 'admin') return;
+    this.enviando.set(true);
+    this.api.delete(`/api/destinos/${destinoId}/`).subscribe({
+      next: () => {
+        this.paradaQuitar.set(null);
+        this.confirmacion.set('');
+        this.enviando.set(false);
+        this.aviso.set('Destino eliminado.');
+        this.recargar();
+      },
+      error: (err: unknown) => this.fallo(err),
+    });
+  }
+
+  etiquetaParada(destinoId: number | null): string {
+    const parada = this.paradasLocal().find((item) => item.destino_id === destinoId);
+    return parada ? `${parada.codigo_externo} · ${parada.direccion}` : 'este destino';
+  }
+
+  pedirEliminar(): void {
+    if (this.modo() !== 'admin') return;
+    this.error.set('');
+    this.confirmacion.set('eliminar');
+  }
+
+  eliminarRuta(): void {
+    if (this.modo() !== 'admin') return;
+    this.enviando.set(true);
+    this.api.delete(`/api/rutas/${this.ruta().id}/`).subscribe({
+      next: () => {
+        this.confirmacion.set('');
+        this.enviando.set(false);
+        this.eliminada.emit();
+      },
+      error: (err: unknown) => this.fallo(err),
+    });
+  }
+
   pedirInhabilitar(): void {
     const estado = this.ruta().estado;
     if (estado === 'FINALIZADA' || estado === 'CANCELADA') {
@@ -603,6 +677,11 @@ export class RutaDetalle {
 
   llegada(): void {
     this.accion('llegada-base', 'Llegada confirmada. La ruta quedó finalizada.');
+  }
+
+  alGeoreferenciar(): void {
+    this.aviso.set('Ubicación del destino actualizada. El mapa ya usa este punto.');
+    this.recargar();
   }
 
   recargar(): void {

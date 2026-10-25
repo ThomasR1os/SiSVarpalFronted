@@ -70,7 +70,7 @@ export class Operacion {
   protected readonly catalogo = signal<CatalogoRuta | null>(null);
   protected readonly rutaAbierta = signal<Ruta | null>(null);
   protected readonly rutaAccion = signal<Ruta | null>(null);
-  protected readonly dialogo = signal<'' | 'destino' | 'inhabilitar' | 'eliminar'>('');
+  protected readonly dialogo = signal<'' | 'destino' | 'inhabilitar' | 'eliminar' | 'eliminarRuta'>('');
   protected readonly editando = signal<Destino | null>(null);
   protected readonly tipo = signal<TipoServicio>('ENTREGA');
   protected readonly archivoNombre = signal('');
@@ -472,59 +472,16 @@ export class Operacion {
 
   abrirEliminar(destino: Destino): void {
     this.error.set('');
-    const ticket = ++this.solicitud;
-    if (!destino.ruta_id) {
-      if (destino.estado !== 'NO_INICIADO') {
-        this.error.set('Solo se elimina un destino pendiente que no está en una ruta.');
-        return;
-      }
-      this.rutaAccion.set(null);
-      this.editando.set(destino);
-      this.dialogo.set('eliminar');
-      return;
-    }
-    this.api.get<Ruta>(`/api/rutas/${destino.ruta_id}/`).subscribe({
-      next: (ruta) => {
-        if (ticket !== this.solicitud) return;
-        if (ruta.estado === 'FINALIZADA' || ruta.estado === 'CANCELADA') {
-          this.error.set('No se puede quitar un destino de una ruta finalizada o inhabilitada.');
-          return;
-        }
-        if (ruta.paradas.length < 2) {
-          this.error.set('No se puede quitar la única parada. Inhabilita la ruta si ya no debe continuar.');
-          return;
-        }
-        this.rutaAccion.set(ruta);
-        this.editando.set(destino);
-        this.dialogo.set('eliminar');
-      },
-      error: (err: unknown) => {
-        if (ticket === this.solicitud) this.error.set(mensajeError(err));
-      },
-    });
+    this.rutaAccion.set(null);
+    this.editando.set(destino);
+    this.dialogo.set('eliminar');
   }
 
   confirmarEliminar(): void {
     const destino = this.editando();
-    const ruta = this.rutaAccion();
     if (!destino) return;
-    if (!ruta && destino.estado !== 'NO_INICIADO') return;
+    const rutaId = destino.ruta_id;
     this.enviando.set(true);
-    if (ruta) {
-      const destinoIds = ruta.paradas.filter((parada) => parada.destino_id !== destino.id).map((parada) => parada.destino_id);
-      this.api.patch<Ruta>(`/api/rutas/${ruta.id}/`, { destino_ids: destinoIds }).subscribe({
-        next: () => {
-          this.enviando.set(false);
-          this.dialogo.set('');
-          this.error.set('');
-          this.aviso.set('Parada retirada de la ruta. El destino queda libre.');
-          this.cargar();
-          if (this.rutaAbierta()?.id === ruta.id) this.abrirRuta(ruta.id);
-        },
-        error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
-      });
-      return;
-    }
     this.api.delete(`/api/destinos/${destino.id}/`).subscribe({
       next: () => {
         this.enviando.set(false);
@@ -532,23 +489,44 @@ export class Operacion {
         this.error.set('');
         this.aviso.set('Destino eliminado.');
         this.seleccion.set(this.seleccion().filter((id) => id !== destino.id));
-        this.cargarDestinos();
+        this.orden.set(this.orden().filter((id) => id !== destino.id));
+        this.cargar();
+        if (rutaId && this.rutaAbierta()?.id === rutaId) this.abrirRuta(rutaId);
       },
       error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
     });
   }
 
-  textoEliminar(): string {
+  pedirEliminarRuta(ruta: Ruta): void {
+    this.error.set('');
+    this.editando.set(null);
+    this.rutaAccion.set(ruta);
+    this.dialogo.set('eliminarRuta');
+  }
+
+  confirmarEliminarRuta(): void {
     const ruta = this.rutaAccion();
-    const estado = this.editando()?.estado;
-    if (ruta && (estado === 'EXITOSO' || estado === 'FALLIDO' || estado === 'PENDIENTE')) {
-      return 'Esta parada ya tiene un cierre. Al quitarla sale de la ruta y el destino vuelve a quedar libre, sin ese resultado.';
-    }
-    if (ruta?.estado === 'EN_PROCESO') {
-      return 'Quitar esta parada de una ruta ya iniciada la saca del recorrido en vivo. El conductor dejará de verla.';
-    }
-    if (ruta) return 'La parada saldrá de la ruta y el destino quedará libre. La ruta se conserva.';
-    return 'Se eliminará este destino. No se puede deshacer.';
+    if (!ruta) return;
+    this.enviando.set(true);
+    this.api.delete(`/api/rutas/${ruta.id}/`).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.dialogo.set('');
+        this.rutaAccion.set(null);
+        this.error.set('');
+        this.aviso.set('Ruta eliminada. Los destinos que seguían en proceso quedan libres.');
+        if (this.rutaAbierta()?.id === ruta.id) this.rutaAbierta.set(null);
+        this.cargar();
+      },
+      error: (err: unknown) => { this.enviando.set(false); this.error.set(mensajeError(err)); },
+    });
+  }
+
+  alEliminarRuta(): void {
+    this.rutaAbierta.set(null);
+    this.aviso.set('Ruta eliminada. Los destinos que seguían en proceso quedan libres.');
+    this.error.set('');
+    this.cargar();
   }
 
   elegirArchivo(event: Event): void {

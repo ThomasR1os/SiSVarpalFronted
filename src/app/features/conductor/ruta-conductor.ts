@@ -147,7 +147,7 @@ function atendida(parada: Parada): boolean {
                 @if (parada.estado === 'PENDIENTE') {
                   <p class="text-sm text-base-content/70">Esta parada está pendiente. Sube las evidencias para cerrarla.</p>
                 }
-                <app-cerrar-parada [parada]="parada" (cerrado)="paradaCerrada()" />
+                <app-cerrar-parada [parada]="parada" (cerrado)="paradaCerrada()" (georeferenciada)="alGeoreferenciar()" />
               </section>
             } @else if (atendida(parada)) {
               <section class="cd-card">
@@ -661,7 +661,12 @@ export class RutaConductor {
   paradaCerrada(): void {
     this.cerrarDetalle();
     this.focoId.set(null);
-    this.aviso.set('Destino cerrado.');
+    this.aviso.set('Destino cerrado. La numeración sigue el orden de las visitas.');
+    this.recargar();
+  }
+
+  alGeoreferenciar(): void {
+    this.aviso.set('Ubicación guardada. El mapa ya usa este punto.');
     this.recargar();
   }
 
