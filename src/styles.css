@@ -1044,6 +1044,93 @@
     margin: 0;
     font-weight: 700;
   }
+  .prog-reprog {
+    padding: 0.9rem 1rem;
+    border-color: #f4d58d;
+    background: #fffaf0;
+  }
+  .prog-reprog-head h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .prog-reprog-head h2 span {
+    border-radius: 999px;
+    background: #f59e0b;
+    padding: 0 0.5rem;
+    color: #fff;
+    font-size: 0.78rem;
+  }
+  .prog-reprog-head p {
+    margin: 0.2rem 0 0;
+    color: #5b6b7f;
+    font-size: 0.85rem;
+  }
+  .prog-reprog ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .prog-reprog li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid #f1e3bf;
+    border-radius: 0.75rem;
+    background: #fff;
+    padding: 0.65rem 0.8rem;
+  }
+  .prog-reprog-info {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 18rem;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.85rem;
+    color: #3e5168;
+  }
+  .prog-reprog-info strong {
+    color: #102440;
+  }
+  .prog-reprog-info em {
+    color: #92400e;
+  }
+  .prog-reprog-acciones {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+  .prog-reprog-acciones label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    color: #5b6b7f;
+  }
+  .prog-reprog-acciones input {
+    border: 1px solid #d5e0ec;
+    border-radius: 0.6rem;
+    padding: 0.35rem 0.5rem;
+    color: #102440;
+  }
+  .prog-reprog-marca {
+    display: inline-block;
+    margin-left: 0.35rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    padding: 0.05rem 0.45rem;
+    color: #92400e;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
   .prog-preview {
     margin: 0;
     color: #3e5168;

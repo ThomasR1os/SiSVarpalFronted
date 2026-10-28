@@ -50,6 +50,36 @@
     </div>
   }
 
+  @if (solicitudes().length) {
+    <section class="prog-card prog-reprog">
+      <div class="prog-reprog-head">
+        <h2>Solicitudes de reprogramación <span>{{ solicitudes().length }}</span></h2>
+        <p>El conductor no pudo atender estas paradas. Confirma la fecha y agrégalas a una próxima ruta.</p>
+      </div>
+      <ul>
+        @for (destino of solicitudes(); track destino.id) {
+          <li>
+            <div class="prog-reprog-info">
+              <strong>{{ destino.codigo_externo }} · {{ destino.nombre_receptor }} {{ destino.apellido_receptor }}</strong>
+              <span>{{ nombreClienteDe(destino.cliente_id) }} · {{ etiquetaTipo(destino.tipo_servicio) }} · {{ destino.direccion }}</span>
+              <span>
+                @if (destino.fecha_anterior) { Iba el {{ fechaCorta(destino.fecha_anterior) }} · }
+                Pide el {{ fechaCorta(destino.fecha) }}
+              </span>
+              @if (destino.motivo_reprogramacion) { <em>{{ destino.motivo_reprogramacion }}</em> }
+            </div>
+            <div class="prog-reprog-acciones">
+              <label>Fecha de la próxima ruta
+                <input type="date" [value]="fechaSolicitud(destino)" (change)="cambiarFechaSolicitud(destino, $event)" />
+              </label>
+              <button type="button" class="prog-btn prog-btn-sm" [disabled]="enviando()" (click)="programarSolicitud(destino)">Programar</button>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
   @if (rutaAbierta(); as ruta) {
     <section class="prog-card prog-detalle">
       <app-ruta-detalle [ruta]="ruta" modo="admin" (cambio)="actualizarRuta($event)" (cerrada)="volverAlListado()" (eliminada)="alEliminarRuta()" />
@@ -180,7 +210,10 @@
                     <td data-label="Destinatario">{{ nombreDestinatario(destino) }}</td>
                     <td data-label="Dirección">{{ destino.direccion }}</td>
                     <td data-label="Distrito">{{ destino.distrito }}</td>
-                    <td data-label="Estado"><span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span></td>
+                    <td data-label="Estado">
+                      <span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span>
+                      @if (destino.reprogramacion_pendiente) { <span class="prog-reprog-marca">Reprogramado</span> }
+                    </td>
                     <td class="acciones" data-label="Acciones">
                       <div class="prog-acciones">
                         @if (destino.estado === 'NO_INICIADO' || destino.estado === 'EN_PROCESO') {

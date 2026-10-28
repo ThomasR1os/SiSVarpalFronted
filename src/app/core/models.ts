@@ -119,6 +119,9 @@ export interface Destino {
   motivo_id: number | null;
   motivo_descripcion?: string | null;
   observacion_cierre: string;
+  reprogramacion_pendiente: boolean;
+  fecha_anterior: string | null;
+  motivo_reprogramacion: string;
   ruta_id: number | null;
   creado_en: string;
   actualizado_en: string;

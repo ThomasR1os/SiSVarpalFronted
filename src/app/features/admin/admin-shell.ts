@@ -123,6 +123,9 @@ import { etiquetaRol, fechaHora, nombrePersona } from '../../core/texto';
                     }
                   }
                   {{ item.nombre }}
+                  @if (item.icono === 'programacion' && reprogramaciones()) {
+                    <span class="badge badge-warning badge-sm ml-auto" [attr.aria-label]="reprogramaciones() + ' solicitudes de reprogramación'">{{ reprogramaciones() }}</span>
+                  }
                 </a>
               </li>
             }
@@ -151,6 +154,7 @@ export class AdminShell {
   protected readonly nombre = computed(() => nombrePersona(this.auth.usuario()));
   protected readonly rol = computed(() => etiquetaRol(this.auth.usuario()?.rol ?? ''));
   protected readonly sinLeer = computed(() => this.avisos().filter((a) => !a.leida).length);
+  protected readonly reprogramaciones = signal(0);
   protected readonly fechaHora = fechaHora;
   protected readonly seccion = signal(textoSeccion(''));
   protected readonly menuFijo = signal(true);
@@ -194,6 +198,17 @@ export class AdminShell {
         },
         error: (err: unknown) => console.error(mensajeError(err)),
       });
+    interval(25000)
+      .pipe(
+        startWith(0),
+        switchMap(() =>
+          this.api.get<Pagina<unknown>>('/api/destinos/', { reprogramacion_pendiente: true, page_size: 1 }).pipe(
+            catchError(() => of({ count: 0, next: null, previous: null, results: [] as unknown[] })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((pagina) => this.reprogramaciones.set(pagina.count));
   }
 
   abrirAviso(aviso: Notificacion): void {

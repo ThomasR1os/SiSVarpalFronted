@@ -10,6 +10,13 @@ const MAX_FOTOS = 10;
 const MAX_COMENTARIO = 500;
 const TIPOS_FOTO = ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp'];
 
+function fechaLocal(diasDespues: number): string {
+  const dia = new Date();
+  dia.setDate(dia.getDate() + diasDespues);
+  const mes = String(dia.getMonth() + 1).padStart(2, '0');
+  return `${dia.getFullYear()}-${mes}-${String(dia.getDate()).padStart(2, '0')}`;
+}
+
 function esFoto(archivo: File): boolean {
   if (TIPOS_FOTO.includes(archivo.type)) return true;
   return /\.(jpe?g|png|webp)$/i.test(archivo.name);
@@ -122,7 +129,26 @@ function esFoto(archivo: File): boolean {
         <button class="btn btn-outline btn-error min-h-12 flex-1 gap-2 rounded-xl bg-base-100 text-base" type="button" [disabled]="enviando()" (click)="enviar('FALLIDO')">
           <app-icono nombre="alerta" class="size-5" /> Marcar entrega fallida
         </button>
+        <button class="btn btn-outline btn-warning min-h-12 flex-1 gap-2 rounded-xl bg-base-100 text-base" type="button" [disabled]="enviando()" (click)="abrirReprogramar()">
+          <app-icono nombre="reloj" class="size-5" /> Reprogramar
+        </button>
       </div>
+
+      @if (reprogramando()) {
+        <div class="flex flex-col gap-3 rounded-box border border-warning/40 bg-warning/10 p-3">
+          <p class="font-semibold">Reprogramar entrega</p>
+          <p class="text-xs text-base-content/70">La parada sale de esta ruta y llega a Programación como solicitud. No necesita fotos ni horas de descarga.</p>
+          <label class="flex flex-col gap-1.5">
+            <span class="text-sm font-semibold">Nueva fecha</span>
+            <input type="date" class="input min-h-11 w-full rounded-xl" [min]="manana" [value]="fechaNueva()" (input)="fechaNueva.set(valorDe($event))" />
+          </label>
+          <p class="text-xs text-base-content/65">Indica el motivo arriba o escribe un comentario.</p>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button class="btn btn-warning min-h-12 flex-1 rounded-xl" type="button" [disabled]="enviando()" (click)="reprogramar()">Enviar solicitud</button>
+            <button class="btn btn-ghost min-h-12 rounded-xl" type="button" [disabled]="enviando()" (click)="reprogramando.set(false)">Cancelar</button>
+          </div>
+        </div>
+      }
     </form>
   `,
 })
@@ -143,6 +169,9 @@ export class CerrarParada {
   protected readonly enviando = signal(false);
   protected readonly ubicando = signal(false);
   protected readonly ubicacionGuardada = signal(false);
+  protected readonly reprogramando = signal(false);
+  protected readonly manana = fechaLocal(1);
+  protected readonly fechaNueva = signal(fechaLocal(1));
   private archivos: File[] = [];
   protected readonly form = this.fb.nonNullable.group({
     motivo_id: [''],
@@ -224,6 +253,45 @@ export class CerrarParada {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
+  }
+
+  valorDe(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
+
+  abrirReprogramar(): void {
+    this.error.set('');
+    this.reprogramando.set(true);
+  }
+
+  reprogramar(): void {
+    const raw = this.form.getRawValue();
+    const fecha = this.fechaNueva();
+    if (!fecha || fecha < this.manana) {
+      this.error.set('Elige una fecha a partir de mañana.');
+      return;
+    }
+    const motivo = this.motivos().find((item) => String(item.id) === raw.motivo_id)?.descripcion ?? '';
+    const texto = [motivo, raw.observacion.trim()].filter(Boolean).join(' · ');
+    if (!texto) {
+      this.error.set('Para reprogramar, selecciona un motivo o escribe un comentario.');
+      return;
+    }
+    if (!confirm(`¿Reprogramar esta entrega para el ${fecha.split('-').reverse().join('/')}?`)) return;
+    this.enviando.set(true);
+    this.error.set('');
+    this.api
+      .post(`/api/destinos/${this.parada().destino_id}/solicitar-reprogramacion/`, { fecha, motivo: texto.slice(0, MAX_COMENTARIO) })
+      .subscribe({
+        next: () => {
+          this.enviando.set(false);
+          this.cerrado.emit();
+        },
+        error: (err: unknown) => {
+          this.enviando.set(false);
+          this.error.set(mensajeError(err));
+        },
+      });
   }
 
   enviar(resultado: 'EXITOSO' | 'FALLIDO'): void {
