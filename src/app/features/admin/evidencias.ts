@@ -4,10 +4,10 @@ import { EMPTY, expand, forkJoin, Observable, reduce } from 'rxjs';
 import { Api, Consulta } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { Cliente, Destino, EstadoDestino, Evidencia, Pagina, Ruta, TipoServicio } from '../../core/models';
-import { TAMANO_CATALOGO, etiquetaTipo, fechaCorta, fechaHora, hoy, nombrePersona } from '../../core/texto';
+import { TAMANO_CATALOGO, estadoCerrado, etiquetaTipo, fechaCorta, fechaHora, hoy, nombrePersona } from '../../core/texto';
 
 type Ambito = 'todas' | 'local' | 'provincia';
-type Corte = '' | 'EXITOSO' | 'FALLIDO' | 'PENDIENTE' | 'EN_PROCESO';
+type Corte = '' | 'EXITOSO' | 'FALLIDO' | 'REPROGRAMADO' | 'PENDIENTE' | 'EN_PROCESO';
 
 @Component({
   selector: 'app-evidencias-admin',
@@ -84,22 +84,24 @@ export class EvidenciasAdmin {
     const base = this.base();
     const exitosos = base.filter((destino) => destino.estado === 'EXITOSO').length;
     const fallidos = base.filter((destino) => destino.estado === 'FALLIDO').length;
+    const reprogramados = base.filter((destino) => destino.estado === 'REPROGRAMADO').length;
     const pendientes = base.filter((destino) => destino.estado === 'PENDIENTE').length;
     return {
-      cierres: exitosos + fallidos + pendientes,
+      cierres: exitosos + fallidos + reprogramados + pendientes,
       exitosos,
       fallidos,
+      reprogramados,
       pendientes,
       enRuta: base.filter((destino) => destino.estado === 'EN_PROCESO').length,
     };
   });
   protected readonly lista = computed(() => {
     const corte = this.corte();
-    const peso: Record<string, number> = { PENDIENTE: 0, FALLIDO: 1, EXITOSO: 2, EN_PROCESO: 3 };
+    const peso: Record<string, number> = { PENDIENTE: 0, FALLIDO: 1, REPROGRAMADO: 2, EXITOSO: 3, EN_PROCESO: 4 };
     return this.base()
       .filter((destino) => {
         if (corte) return destino.estado === corte;
-        return destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO' || destino.estado === 'PENDIENTE';
+        return estadoCerrado(destino.estado) || destino.estado === 'PENDIENTE';
       })
       .sort((a, b) => {
         const orden = (peso[a.estado] ?? 9) - (peso[b.estado] ?? 9);
@@ -276,6 +278,8 @@ export class EvidenciasAdmin {
         return 'Entregado';
       case 'FALLIDO':
         return 'Fallido';
+      case 'REPROGRAMADO':
+        return 'Reprogramado';
     }
   }
 
@@ -289,6 +293,8 @@ export class EvidenciasAdmin {
         return 'prog-pill prog-pill-ok';
       case 'FALLIDO':
         return 'prog-pill prog-pill-error';
+      case 'REPROGRAMADO':
+        return 'prog-pill prog-pill-reprogramado';
       default:
         return 'prog-pill';
     }

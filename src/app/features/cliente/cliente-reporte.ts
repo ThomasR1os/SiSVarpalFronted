@@ -91,7 +91,7 @@ const POR_PAGINA = 10;
             <option value="EN_PROCESO">En proceso</option>
             <option value="PENDIENTE">Evidencia pendiente</option>
             <option value="EXITOSO">Exitoso</option>
-            <option value="FALLIDO">Fallido</option>
+            <option value="FALLIDO">Fallido</option><option value="REPROGRAMADO">Reprogramado</option>
           </select>
         </label>
         <label class="control">Responsable
@@ -215,7 +215,7 @@ export class ClienteReporte {
     const entregados = lista.filter((pedido) => pedido.estado === 'EXITOSO').length;
     const enRuta = lista.filter((pedido) => pedido.estado === 'EN_PROCESO').length;
     const pendientes = lista.filter((pedido) => pedido.estado === 'NO_INICIADO').length;
-    const incidencias = lista.filter((pedido) => pedido.estado === 'FALLIDO').length;
+    const incidencias = lista.filter((pedido) => pedido.estado === 'FALLIDO' || pedido.estado === 'REPROGRAMADO').length;
     const distritos = new Set(lista.map((pedido) => pedido.distrito)).size;
     const zona = this.zona() === 'lima' ? 'Lima metropolitana' : 'Provincia';
     return [
@@ -269,7 +269,7 @@ export class ClienteReporte {
 
   cambiarEstado(evento: Event): void {
     const valor = (evento.target as HTMLSelectElement).value;
-    if (valor === '' || valor === 'NO_INICIADO' || valor === 'EN_PROCESO' || valor === 'PENDIENTE' || valor === 'EXITOSO' || valor === 'FALLIDO') {
+    if (valor === '' || valor === 'NO_INICIADO' || valor === 'EN_PROCESO' || valor === 'PENDIENTE' || valor === 'EXITOSO' || valor === 'FALLIDO' || valor === 'REPROGRAMADO') {
       this.estado.set(valor);
     }
     this.pagina.set(1);

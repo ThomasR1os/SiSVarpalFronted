@@ -26,6 +26,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
           <select class="select w-full" formControlName="resultado">
             <option value="EXITOSO">Exitoso</option>
             <option value="FALLIDO">Fallido</option>
+            <option value="REPROGRAMADO">Reprogramado</option>
             <option value="PENDIENTE">Pendiente</option>
           </select>
         </label>
@@ -33,7 +34,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
           <p class="ayuda">La parada queda pendiente. Las evidencias se pueden entregar después, con o sin fotos por ahora.</p>
         }
 
-        @if (form.controls.resultado.value === 'FALLIDO') {
+        @if (form.controls.resultado.value === 'FALLIDO' || form.controls.resultado.value === 'REPROGRAMADO') {
           <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold">Motivo</span>
             <select class="select w-full" formControlName="motivo_id">
@@ -54,7 +55,7 @@ const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
           <span class="text-sm font-semibold">Evidencias · {{ totalFotos() }}/{{ maxFotos }}</span>
           @if (cargando()) {
             <p class="ayuda">Cargando fotos…</p>
-          } @else if (form.controls.resultado.value !== 'PENDIENTE' && !fotosActuales().length && !vistas().length) {
+          } @else if (form.controls.resultado.value !== 'PENDIENTE' && form.controls.resultado.value !== 'REPROGRAMADO' && !fotosActuales().length && !vistas().length) {
             <p class="ayuda">Esta parada no tiene fotos. Agrega al menos una.</p>
           }
           <div class="fotos">
@@ -132,7 +133,7 @@ export class CorregirCierre implements OnInit {
     this.api.get<Destino>(`/api/destinos/${destinoId}/`).subscribe({
       next: (destino) => {
         this.form.patchValue({
-          resultado: destino.estado === 'FALLIDO' || destino.estado === 'PENDIENTE' ? destino.estado : 'EXITOSO',
+          resultado: destino.estado === 'FALLIDO' || destino.estado === 'REPROGRAMADO' || destino.estado === 'PENDIENTE' ? destino.estado : 'EXITOSO',
           motivo_id: destino.motivo_id ? String(destino.motivo_id) : '',
           observacion: destino.observacion_cierre ?? '',
         });
@@ -193,6 +194,7 @@ export class CorregirCierre implements OnInit {
 
   avisoEstado(): string {
     if (this.parada().estado === 'FALLIDO') return 'El conductor marcó esta parada como fallida.';
+    if (this.parada().estado === 'REPROGRAMADO') return 'El conductor marcó esta parada como reprogramada.';
     if (this.parada().estado === 'PENDIENTE') return 'Esta parada está pendiente de evidencias.';
     return 'El conductor marcó esta parada como exitosa.';
   }
@@ -208,14 +210,14 @@ export class CorregirCierre implements OnInit {
       this.error.set('Selecciona un motivo para el cierre fallido.');
       return;
     }
-    if (resultado !== 'PENDIENTE' && this.totalFotos() < 1) {
+    if (resultado !== 'PENDIENTE' && resultado !== 'REPROGRAMADO' && this.totalFotos() < 1) {
       this.error.set('Debe quedar al menos una evidencia.');
       return;
     }
     const datos = new FormData();
     datos.append('resultado', resultado);
     datos.append('observacion', this.form.controls.observacion.value);
-    if (resultado === 'FALLIDO') datos.append('motivo_id', motivoId);
+    if ((resultado === 'FALLIDO' || resultado === 'REPROGRAMADO') && motivoId) datos.append('motivo_id', motivoId);
     for (const id of this.quitadas()) datos.append('eliminar', String(id));
     for (const archivo of this.archivos) datos.append('fotos', archivo);
     this.enviando.set(true);

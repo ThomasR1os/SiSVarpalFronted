@@ -20,6 +20,8 @@ export class Badge {
       case 'FALLIDO':
       case 'CANCELADA':
         return 'badge badge-sm badge-error whitespace-nowrap';
+      case 'REPROGRAMADO':
+        return 'badge badge-sm whitespace-nowrap border-0 bg-violet-600 text-white';
       case 'BORRADOR':
         return 'badge badge-sm badge-ghost whitespace-nowrap';
       default:

@@ -326,7 +326,7 @@ export class ClienteDashboard {
     const entregados = lista.filter((pedido) => pedido.estado === 'EXITOSO').length;
     const enRuta = lista.filter((pedido) => pedido.estado === 'EN_PROCESO').length;
     const pendientes = lista.filter((pedido) => pedido.estado === 'NO_INICIADO').length;
-    const incidencias = lista.filter((pedido) => pedido.estado === 'FALLIDO').length;
+    const incidencias = lista.filter((pedido) => pedido.estado === 'FALLIDO' || pedido.estado === 'REPROGRAMADO').length;
     return [
       { id: 'prog', etiqueta: 'Pedidos programados', valor: total, detalle: this.variacion() ?? 'En el periodo', tono: 'primary' },
       { id: 'ok', etiqueta: 'Pedidos entregados', valor: entregados, detalle: porcentaje(entregados, total), tono: 'success' },
@@ -341,7 +341,7 @@ export class ClienteDashboard {
       { nombre: 'Entregados', valor: lista.filter((pedido) => pedido.estado === 'EXITOSO').length, color: 'var(--color-success)' },
       { nombre: 'En ruta', valor: lista.filter((pedido) => pedido.estado === 'EN_PROCESO').length, color: 'var(--color-info)' },
       { nombre: 'Pendientes', valor: lista.filter((pedido) => pedido.estado === 'NO_INICIADO').length, color: 'var(--color-warning)' },
-      { nombre: 'Incidencias', valor: lista.filter((pedido) => pedido.estado === 'FALLIDO').length, color: 'var(--color-error)' },
+      { nombre: 'Incidencias', valor: lista.filter((pedido) => pedido.estado === 'FALLIDO' || pedido.estado === 'REPROGRAMADO').length, color: 'var(--color-error)' },
     ];
   });
   protected readonly operaciones = computed(() => [

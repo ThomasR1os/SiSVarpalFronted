@@ -153,7 +153,7 @@ function htmlMarca(marca: MarcaMapa): string {
     return `<span class="pin pin-camion" title="${esc(marca.titulo)}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3 7h11v8H3V7zm11 2h3.2L20 12.2V15h-6V9zM6.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg></span>`;
   }
   if (marca.color) {
-    const cerrada = marca.tipo === 'parada' && (marca.estado === 'EXITOSO' || marca.estado === 'FALLIDO');
+    const cerrada = marca.tipo === 'parada' && (marca.estado === 'EXITOSO' || marca.estado === 'FALLIDO' || marca.estado === 'REPROGRAMADO');
     const anillo = cerrada ? `;box-shadow:0 0 0 3px ${colorEstado(marca.estado)},0 2px 8px rgba(0,20,48,0.28)` : '';
     return `<span class="pin" style="background:${esc(marca.color)}${anillo}" title="${esc(marca.titulo)}">${esc(marca.texto)}</span>`;
   }

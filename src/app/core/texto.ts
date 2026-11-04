@@ -35,6 +35,7 @@ const ESTADOS_DESTINO: Record<EstadoDestino, string> = {
   PENDIENTE: 'Evidencia pendiente',
   EXITOSO: 'Exitoso',
   FALLIDO: 'Fallido',
+  REPROGRAMADO: 'Reprogramado',
 };
 
 const TIPOS: Record<TipoServicio, string> = {
@@ -199,7 +200,11 @@ export function idOpcional(valor: unknown): number | null {
 }
 
 export function paradasCerradas(paradas: { estado: string }[]): boolean {
-  return paradas.length > 0 && paradas.every((p) => p.estado === 'EXITOSO' || p.estado === 'FALLIDO');
+  return paradas.length > 0 && paradas.every((p) => estadoCerrado(p.estado));
+}
+
+export function estadoCerrado(estado: string | null | undefined): boolean {
+  return estado === 'EXITOSO' || estado === 'FALLIDO' || estado === 'REPROGRAMADO';
 }
 
 export function horarioParadas(paradas: { orden: number; hora_estimada: string | null }[]): string {

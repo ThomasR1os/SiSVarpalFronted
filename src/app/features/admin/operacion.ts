@@ -9,6 +9,7 @@ import { CatalogoRuta, Catalogos } from '../../core/catalogos';
 import { Cliente, Destino, ImportacionDestinos, Optimizacion, Pagina, Punto, Ruta, TipoServicio } from '../../core/models';
 import {
   TAMANO_CATALOGO,
+  estadoCerrado,
   etiquetaEstado,
   etiquetaTipo,
   fechaCorta,
@@ -78,8 +79,6 @@ export class Operacion {
   protected readonly error = signal('');
   protected readonly aviso = signal('');
   protected readonly enviando = signal(false);
-  protected readonly solicitudes = signal<Destino[]>([]);
-  protected readonly fechasSolicitud = signal<Record<number, string>>({});
   private archivo: File | null = null;
   private solicitud = 0;
   private rutasTicket = 0;
@@ -178,67 +177,7 @@ export class Operacion {
     this.cargar();
   }
 
-  cargarSolicitudes(): void {
-    this.api
-      .get<Pagina<Destino>>('/api/destinos/', { reprogramacion_pendiente: true, page_size: TAMANO_CATALOGO, ordering: 'fecha' })
-      .subscribe({
-        next: (pagina) => this.solicitudes.set(pagina.results),
-        error: (err: unknown) => this.error.set(mensajeError(err)),
-      });
-  }
-
-  nombreClienteDe(id: number): string {
-    const cliente = this.clientes().find((item) => item.id === id);
-    return cliente?.nombre_comercial || cliente?.razon_social || 'Cliente';
-  }
-
-  fechaSolicitud(destino: Destino): string {
-    return this.fechasSolicitud()[destino.id] ?? destino.fecha;
-  }
-
-  cambiarFechaSolicitud(destino: Destino, event: Event): void {
-    const valor = (event.target as HTMLInputElement).value;
-    this.fechasSolicitud.update((actual) => ({ ...actual, [destino.id]: valor }));
-  }
-
-  programarSolicitud(destino: Destino): void {
-    const fecha = this.fechaSolicitud(destino);
-    if (!fecha) {
-      this.error.set('Elige la fecha de la próxima ruta.');
-      return;
-    }
-    const abrir = () => {
-      this.fecha.set(fecha);
-      this.sinRuta.set(true);
-      if (this.clienteId() === destino.cliente_id) {
-        this.seleccion.set([destino.id]);
-        this.cargar();
-      } else {
-        this.elegirCliente(destino.cliente_id);
-        this.seleccion.set([destino.id]);
-      }
-      this.aviso.set(`${destino.codigo_externo} quedó para el ${fechaCorta(fecha)}. Ya está marcado: arma la ruta con él.`);
-    };
-    if (fecha === destino.fecha) {
-      abrir();
-      return;
-    }
-    this.enviando.set(true);
-    this.api.post<Destino>(`/api/destinos/${destino.id}/reprogramar/`, { fecha }).subscribe({
-      next: () => {
-        this.enviando.set(false);
-        this.cargarSolicitudes();
-        abrir();
-      },
-      error: (err: unknown) => {
-        this.enviando.set(false);
-        this.error.set(mensajeError(err));
-      },
-    });
-  }
-
   cargar(): void {
-    this.cargarSolicitudes();
     this.cargarRutas();
     if (this.clienteId()) this.cargarDestinos();
     else {
@@ -368,8 +307,8 @@ export class Operacion {
   }
 
   editarDestino(destino: Destino): void {
-    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
-      this.error.set('No se puede editar un destino exitoso o fallido.');
+    if (estadoCerrado(destino.estado)) {
+      this.error.set('No se puede editar un destino que ya se cerró.');
       return;
     }
     if (destino.estado !== 'NO_INICIADO' && destino.estado !== 'EN_PROCESO') {
@@ -483,8 +422,8 @@ export class Operacion {
 
   abrirInhabilitar(destino: Destino): void {
     this.error.set('');
-    if (destino.estado === 'EXITOSO' || destino.estado === 'FALLIDO') {
-      this.error.set('No se puede inhabilitar la ruta de un destino exitoso o fallido.');
+    if (estadoCerrado(destino.estado)) {
+      this.error.set('No se puede inhabilitar la ruta de un destino que ya se cerró.');
       return;
     }
     if (!destino.ruta_id) {
@@ -834,6 +773,8 @@ export class Operacion {
         return 'prog-pill prog-pill-ok';
       case 'FALLIDO':
         return 'prog-pill prog-pill-error';
+      case 'REPROGRAMADO':
+        return 'prog-pill prog-pill-reprogramado';
       default:
         return 'prog-pill';
     }

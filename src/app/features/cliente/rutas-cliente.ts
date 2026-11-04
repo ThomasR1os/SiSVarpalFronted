@@ -50,7 +50,7 @@ export function resumirRutas(rutas: readonly Ruta[]): ResumenRutas {
     for (const parada of ruta.paradas) {
       resumen.paradas += 1;
       if (parada.estado === 'EXITOSO') resumen.exitosas += 1;
-      else if (parada.estado === 'FALLIDO') resumen.fallidas += 1;
+      else if (parada.estado === 'FALLIDO' || parada.estado === 'REPROGRAMADO') resumen.fallidas += 1;
       else resumen.pendientes += 1;
     }
   }

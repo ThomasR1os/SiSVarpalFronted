@@ -122,11 +122,7 @@ import { etiquetaRol, fechaHora, nombrePersona } from '../../core/texto';
                       <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke-width="1.8" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3.5v2M12 18.5v2M4.8 6.2l1.5 1.5M17.7 16.3l1.5 1.5M3.5 12h2M18.5 12h2M4.8 17.8l1.5-1.5M17.7 7.7l1.5-1.5" /></svg>
                     }
                   }
-                  {{ item.nombre }}
-                  @if (item.icono === 'programacion' && reprogramaciones()) {
-                    <span class="badge badge-warning badge-sm ml-auto" [attr.aria-label]="reprogramaciones() + ' solicitudes de reprogramación'">{{ reprogramaciones() }}</span>
-                  }
-                </a>
+                  {{ item.nombre }}                </a>
               </li>
             }
           </ul>
@@ -153,9 +149,7 @@ export class AdminShell {
   protected readonly avisos = signal<Notificacion[]>([]);
   protected readonly nombre = computed(() => nombrePersona(this.auth.usuario()));
   protected readonly rol = computed(() => etiquetaRol(this.auth.usuario()?.rol ?? ''));
-  protected readonly sinLeer = computed(() => this.avisos().filter((a) => !a.leida).length);
-  protected readonly reprogramaciones = signal(0);
-  protected readonly fechaHora = fechaHora;
+  protected readonly sinLeer = computed(() => this.avisos().filter((a) => !a.leida).length);  protected readonly fechaHora = fechaHora;
   protected readonly seccion = signal(textoSeccion(''));
   protected readonly menuFijo = signal(true);
   protected readonly menu: { ruta: string; nombre: string; icono: string }[] = [
@@ -198,17 +192,6 @@ export class AdminShell {
         },
         error: (err: unknown) => console.error(mensajeError(err)),
       });
-    interval(25000)
-      .pipe(
-        startWith(0),
-        switchMap(() =>
-          this.api.get<Pagina<unknown>>('/api/destinos/', { reprogramacion_pendiente: true, page_size: 1 }).pipe(
-            catchError(() => of({ count: 0, next: null, previous: null, results: [] as unknown[] })),
-          ),
-        ),
-        takeUntilDestroyed(),
-      )
-      .subscribe((pagina) => this.reprogramaciones.set(pagina.count));
   }
 
   abrirAviso(aviso: Notificacion): void {

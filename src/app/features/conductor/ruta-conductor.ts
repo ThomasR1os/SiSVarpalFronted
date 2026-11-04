@@ -57,7 +57,7 @@ export interface ItemResumen {
 
 export function resumenParadas(paradas: Parada[]): ItemResumen[] {
   const exitosas = paradas.filter((p) => p.estado === 'EXITOSO').length;
-  const fallidas = paradas.filter((p) => p.estado === 'FALLIDO').length;
+  const fallidas = paradas.filter((p) => p.estado === 'FALLIDO' || p.estado === 'REPROGRAMADO').length;
   return [
     {
       texto: 'Pendientes',
@@ -87,7 +87,7 @@ export function resumenParadas(paradas: Parada[]): ItemResumen[] {
 }
 
 function atendida(parada: Parada): boolean {
-  return parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO';
+  return parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'REPROGRAMADO';
 }
 
 @Component({
@@ -598,6 +598,9 @@ export class RutaConductor {
     }
     if (parada.estado === 'FALLIDO') {
       return { texto: 'Fallido', chip: 'bg-red-50 text-red-700', circulo: 'bg-red-100 text-red-700', icono: 'x-circulo' };
+    }
+    if (parada.estado === 'REPROGRAMADO') {
+      return { texto: 'Reprogramado', chip: 'bg-violet-50 text-violet-700', circulo: 'bg-violet-100 text-violet-700', icono: 'reloj' };
     }
     if (parada.estado === 'PENDIENTE') {
       return { texto: 'Evidencia pendiente', chip: 'bg-amber-50 text-amber-700', circulo: 'bg-amber-100 text-amber-700', icono: 'camara' };

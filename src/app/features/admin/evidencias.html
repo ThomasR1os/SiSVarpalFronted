@@ -74,6 +74,10 @@
       <span>Fallidos</span>
       <strong>{{ conteo().fallidos }}</strong>
     </button>
+    <button type="button" class="evi-kpi reprogramado" [class.activo]="corte() === 'REPROGRAMADO'" [attr.aria-pressed]="corte() === 'REPROGRAMADO'" (click)="fijarCorte('REPROGRAMADO')">
+      <span>Reprogramados</span>
+      <strong>{{ conteo().reprogramados }}</strong>
+    </button>
     <button type="button" class="evi-kpi aviso" [class.activo]="corte() === 'PENDIENTE'" [attr.aria-pressed]="corte() === 'PENDIENTE'" (click)="fijarCorte('PENDIENTE')">
       <span>Por entregar</span>
       <strong>{{ conteo().pendientes }}</strong>

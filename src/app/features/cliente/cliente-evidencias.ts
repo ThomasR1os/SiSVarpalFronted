@@ -439,5 +439,6 @@ function estadoGrupo(lista: Destino[]): EstadoDestino {
   if (lista.some((destino) => destino.estado === 'EN_PROCESO')) return 'EN_PROCESO';
   if (lista.length > 0 && lista.every((destino) => destino.estado === 'EXITOSO')) return 'EXITOSO';
   if (lista.some((destino) => destino.estado === 'FALLIDO')) return 'FALLIDO';
+  if (lista.some((destino) => destino.estado === 'REPROGRAMADO')) return 'REPROGRAMADO';
   return 'NO_INICIADO';
 }

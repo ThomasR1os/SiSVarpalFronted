@@ -7,6 +7,7 @@ import { Destino, Evidencia, Pagina, Parada, Ruta } from '../../core/models';
 import {
   distancia,
   duracion,
+  estadoCerrado,
   etiquetaTipo,
   fechaCorta,
   idOpcional,
@@ -193,7 +194,7 @@ import { CorregirCierre } from './corregir-cierre';
               @if (parada.estado === 'EN_PROCESO' && (modo() === 'admin' || modo() === 'conductor')) {
                 <app-cerrar-parada class="mt-2 w-full border-t border-base-300 pt-3" [parada]="parada" (cerrado)="recargar()" (georeferenciada)="alGeoreferenciar()" />
               }
-              @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'PENDIENTE') {
+              @if (parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'REPROGRAMADO' || parada.estado === 'PENDIENTE') {
                 <span class="flex flex-wrap gap-1">
                   <button type="button" class="btn btn-ghost btn-sm" (click)="verEvidencias(parada.destino_id)">Ver fotos</button>
                   @if (modo() === 'admin') {
@@ -570,7 +571,7 @@ export class RutaDetalle {
   textoQuitar(): string {
     const id = this.paradaQuitar();
     const parada = this.paradasLocal().find((item) => item.destino_id === id);
-    const cerrado = parada?.estado === 'EXITOSO' || parada?.estado === 'FALLIDO' || parada?.estado === 'PENDIENTE';
+    const cerrado = estadoCerrado(parada?.estado) || parada?.estado === 'PENDIENTE';
     if (cerrado) {
       return 'Esta parada ya tiene un cierre. Al quitarla sale de la ruta y el destino vuelve a quedar libre, sin ese resultado.';
     }

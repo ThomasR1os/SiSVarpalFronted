@@ -83,7 +83,7 @@ export function pedidosDe(destinos: readonly Destino[], rutas: readonly Ruta[]):
   return destinos.map((destino) => {
     const ruta = destino.ruta_id == null ? undefined : porRuta.get(destino.ruta_id);
     const grupo: GrupoPedido =
-      destino.estado === 'EXITOSO' ? 'EXITOSO' : destino.estado === 'FALLIDO' ? 'FALLIDO' : 'PENDIENTE';
+      destino.estado === 'EXITOSO' ? 'EXITOSO' : destino.estado === 'FALLIDO' || destino.estado === 'REPROGRAMADO' ? 'FALLIDO' : 'PENDIENTE';
     const descripcion = destino.motivo_descripcion?.trim();
     return {
       id: destino.id,

@@ -1,6 +1,6 @@
 export type Rol = 'ADMINISTRADOR' | 'CONDUCTOR' | 'AUXILIAR' | 'CLIENTE';
 
-export type EstadoDestino = 'NO_INICIADO' | 'EN_PROCESO' | 'PENDIENTE' | 'EXITOSO' | 'FALLIDO';
+export type EstadoDestino = 'NO_INICIADO' | 'EN_PROCESO' | 'PENDIENTE' | 'EXITOSO' | 'FALLIDO' | 'REPROGRAMADO';
 
 export type EstadoRuta = 'BORRADOR' | 'NO_INICIADA' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA';
 
@@ -119,9 +119,6 @@ export interface Destino {
   motivo_id: number | null;
   motivo_descripcion?: string | null;
   observacion_cierre: string;
-  reprogramacion_pendiente: boolean;
-  fecha_anterior: string | null;
-  motivo_reprogramacion: string;
   ruta_id: number | null;
   creado_en: string;
   actualizado_en: string;

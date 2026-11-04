@@ -134,6 +134,8 @@ export function colorEstado(estado: EstadoDestino | string | undefined): string 
       return '#1f7a45';
     case 'FALLIDO':
       return '#b42318';
+    case 'REPROGRAMADO':
+      return '#7c3aed';
     default:
       return '#00275a';
   }
