@@ -11,8 +11,11 @@ import {
   etiquetaTipo,
   fechaCorta,
   idOpcional,
+  leerKilometraje,
   nombrePersona,
+  numero,
   paradasCerradas,
+  textoKilometraje,
 } from '../../core/texto';
 import { Badge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
@@ -53,6 +56,8 @@ import { CorregirCierre } from './corregir-cierre';
           Conductor: {{ nombrePersona(ruta.conductor) }}
           · Vehículo: {{ ruta.vehiculo?.placa || '—' }}
           · Auxiliares: {{ auxiliaresTexto(ruta) }}
+          @if (textoKilometraje(ruta.km_inicial); as inicial) { · Km inicial: {{ inicial }} }
+          @if (textoKilometraje(ruta.km_final); as finalKm) { · Km final: {{ finalKm }} }
         </p>
 
         @if (editable()) {
@@ -160,14 +165,16 @@ import { CorregirCierre } from './corregir-cierre';
         }
 
         <div class="flex flex-col gap-2">
-          @if (editable()) {
-            <p class="ayuda">Arrastra una parada para cambiar su lugar. Después pulsa Guardar orden.</p>
+          @if (puedeParadas()) {
+            <p class="ayuda">{{ editable() ? 'Escribe el N° de orden de cada destino, o arrástralo desde el asa. Después pulsa Guardar orden.' : 'Escribe el N° de orden de cada destino y pulsa Guardar orden.' }}</p>
           }
           @for (parada of paradasLocal(); track parada.destino_id; let indice = $index) {
-            <div class="parada" [class.arrastrable]="editable()" [class.arrastrando]="arrastre() === indice" [class.soltar]="sobre() === indice && arrastre() !== indice" [attr.draggable]="editable() ? true : null" (dragstart)="iniciarArrastre($event, indice)" (dragover)="sobreArrastre($event, indice)" (drop)="soltarArrastre($event, indice)" (dragend)="terminarArrastre()">
+            <div class="parada" [class.arrastrando]="arrastre() === indice" [class.soltar]="sobre() === indice && arrastre() !== indice" (dragover)="sobreArrastre($event, indice)" (drop)="soltarArrastre($event, indice)" (dragend)="terminarArrastre()">
+              <div class="flex w-full items-start gap-3">
+                <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex w-full flex-wrap items-center gap-2">
                 @if (editable()) {
-                  <span class="parada-asa" aria-hidden="true">
+                  <span class="parada-asa" aria-hidden="true" draggable="true" (dragstart)="iniciarArrastre($event, indice)">
                     <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="7" r="1.4" /><circle cx="15" cy="7" r="1.4" /><circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" /><circle cx="9" cy="17" r="1.4" /><circle cx="15" cy="17" r="1.4" /></svg>
                   </span>
                 }
@@ -175,7 +182,7 @@ import { CorregirCierre } from './corregir-cierre';
                 <app-badge [estado]="parada.estado" />
                 <span class="ayuda">{{ etiquetaTipo(parada.tipo_servicio) }}</span>
                 @if (editable() || puedeParadas() || modo() === 'admin') {
-                  <span class="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto" (dragstart)="$event.preventDefault()">
+                  <span class="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto">
                     @if (editable()) {
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, -1)" [disabled]="indice === 0">Subir</button>
                       <button type="button" class="btn btn-ghost btn-sm" (click)="mover(indice, 1)" [disabled]="indice === paradasLocal().length - 1">Bajar</button>
@@ -209,12 +216,28 @@ import { CorregirCierre } from './corregir-cierre';
                   </div>
                 }
               }
+                </div>
+                @if (puedeParadas()) {
+                  <label class="orden-casilla">
+                    <span>N° de orden</span>
+                    <input
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      [max]="paradasLocal().length"
+                      [value]="indice + 1"
+                      [attr.aria-label]="'N° de orden de ' + parada.codigo_externo"
+                      (change)="fijarOrden(indice, $event)"
+                    />
+                  </label>
+                }
+              </div>
             </div>
           }
         </div>
-        @if (modo() === 'admin' || puedeParadas() || (modo() === 'conductor' && ruta.estado === 'NO_INICIADA') || (ruta.estado === 'EN_PROCESO' && todasCerradas())) {
+        @if ((modo() === 'admin' && ruta.estado !== 'FINALIZADA') || puedeParadas() || (modo() === 'conductor' && ruta.estado === 'NO_INICIADA') || (ruta.estado === 'EN_PROCESO' && todasCerradas())) {
           <div class="acciones-pie">
-            @if (editable()) {
+            @if (puedeParadas()) {
               <button type="button" class="btn btn-outline" (click)="guardarOrden()" [disabled]="enviando()">Guardar orden</button>
             }
             @if (modo() === 'admin' && ruta.estado === 'BORRADOR') {
@@ -228,7 +251,7 @@ import { CorregirCierre } from './corregir-cierre';
             @if (puedeParadas()) {
               <button type="button" class="btn btn-error btn-outline" (click)="pedirInhabilitar()" [disabled]="enviando()">Inhabilitar ruta</button>
             }
-            @if (modo() === 'admin') {
+            @if (modo() === 'admin' && ruta.estado !== 'FINALIZADA') {
               <button type="button" class="btn btn-error btn-outline" (click)="pedirEliminar()" [disabled]="enviando()">Eliminar ruta</button>
             }
             @if (ruta.estado === 'EN_PROCESO' && todasCerradas()) {
@@ -279,6 +302,36 @@ import { CorregirCierre } from './corregir-cierre';
             </div>
           </app-modal>
         }
+        @if (confirmacion() === 'iniciar') {
+          <app-modal titulo="Iniciar ruta" (cerrar)="confirmacion.set('')">
+            <div class="flex flex-col gap-4">
+              <p>Anota el kilometraje del tablero antes de salir. La ruta quedará en proceso.</p>
+              @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+              <label class="control">Kilometraje inicial
+                <input type="number" inputmode="decimal" min="0" max="9999999" step="0.1" [value]="kmInicial()" (input)="kmInicial.set(valorInput($event))" placeholder="Ej. 45230" />
+              </label>
+              <button type="button" class="btn btn-primary" (click)="confirmarInicio()" [disabled]="enviando() || !kmInicial().trim()">Iniciar ruta</button>
+            </div>
+          </app-modal>
+        }
+        @if (confirmacion() === 'llegada') {
+          <app-modal titulo="Llegué a la base Varpal" (cerrar)="confirmacion.set('')">
+            <div class="flex flex-col gap-4">
+              <p>
+                @if (textoKilometraje(ruta.km_inicial); as inicial) {
+                  Saliste con {{ inicial }} km. Anota el odómetro al llegar. La ruta quedará finalizada.
+                } @else {
+                  Anota el kilometraje del tablero al llegar. La ruta quedará finalizada.
+                }
+              </p>
+              @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+              <label class="control">Kilometraje final
+                <input type="number" inputmode="decimal" min="0" max="9999999" step="0.1" [value]="kmFinal()" (input)="kmFinal.set(valorInput($event))" placeholder="Ej. 45380" />
+              </label>
+              <button type="button" class="btn btn-primary" (click)="confirmarLlegada()" [disabled]="enviando() || !kmFinal().trim()">Finalizar ruta</button>
+            </div>
+          </app-modal>
+        }
         @if (confirmacion() === 'inhabilitar') {
           <app-modal titulo="Inhabilitar ruta" (cerrar)="confirmacion.set('')">
             <div class="flex flex-col gap-4">
@@ -320,7 +373,10 @@ export class RutaDetalle {
   protected readonly evidencias = signal<Record<number, Evidencia[]>>({});
   protected readonly nuevoDestino = signal('');
   protected readonly paradaQuitar = signal<number | null>(null);
-  protected readonly confirmacion = signal<'' | 'agregar' | 'quitar' | 'inhabilitar' | 'eliminar' | 'eliminarDestino'>('');
+  protected readonly confirmacion = signal<'' | 'agregar' | 'quitar' | 'inhabilitar' | 'eliminar' | 'eliminarDestino' | 'iniciar' | 'llegada'>('');
+  protected readonly kmInicial = signal('');
+  protected readonly kmFinal = signal('');
+  protected readonly textoKilometraje = textoKilometraje;
   protected readonly correccion = signal<Parada | null>(null);
   protected readonly error = signal('');
   protected readonly aviso = signal('');
@@ -429,6 +485,26 @@ export class RutaDetalle {
     const lista = [...this.paradasLocal()];
     const destino = indice + delta;
     if (destino < 0 || destino >= lista.length) return;
+    const [item] = lista.splice(indice, 1);
+    if (!item) return;
+    lista.splice(destino, 0, item);
+    this.colocar(lista);
+  }
+
+  fijarOrden(indice: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const total = this.paradasLocal().length;
+    const pedido = Math.round(Number(input.value));
+    if (!Number.isFinite(pedido)) {
+      input.value = String(indice + 1);
+      return;
+    }
+    const destino = Math.min(total, Math.max(1, pedido)) - 1;
+    if (destino === indice) {
+      input.value = String(indice + 1);
+      return;
+    }
+    const lista = [...this.paradasLocal()];
     const [item] = lista.splice(indice, 1);
     if (!item) return;
     lista.splice(destino, 0, item);
@@ -599,7 +675,32 @@ export class RutaDetalle {
   }
 
   iniciar(): void {
-    this.accion('iniciar', 'Ruta iniciada. Los administradores reciben el aviso.');
+    if (this.modo() !== 'conductor' || !this.puedeIniciar() || this.ruta().estado !== 'NO_INICIADA') return;
+    this.error.set('');
+    this.kmInicial.set('');
+    this.confirmacion.set('iniciar');
+  }
+
+  valorInput(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
+
+  confirmarInicio(): void {
+    const km = leerKilometraje(this.kmInicial());
+    if (km == null) {
+      this.error.set('Escribe el kilometraje del tablero. Usa un número de 0 en adelante.');
+      return;
+    }
+    this.enviando.set(true);
+    this.api.post(`/api/rutas/${this.ruta().id}/iniciar/`, { km_inicial: km }).subscribe({
+      next: () => {
+        this.confirmacion.set('');
+        this.aviso.set('Ruta iniciada. Los administradores reciben el aviso.');
+        this.enviando.set(false);
+        this.recargar();
+      },
+      error: (err: unknown) => this.fallo(err),
+    });
   }
 
   pedirEliminarDestino(destinoId: number): void {
@@ -632,12 +733,16 @@ export class RutaDetalle {
 
   pedirEliminar(): void {
     if (this.modo() !== 'admin') return;
+    if (this.ruta().estado === 'FINALIZADA') {
+      this.error.set('No se puede eliminar una ruta finalizada.');
+      return;
+    }
     this.error.set('');
     this.confirmacion.set('eliminar');
   }
 
   eliminarRuta(): void {
-    if (this.modo() !== 'admin') return;
+    if (this.modo() !== 'admin' || this.ruta().estado === 'FINALIZADA') return;
     this.enviando.set(true);
     this.api.delete(`/api/rutas/${this.ruta().id}/`).subscribe({
       next: () => {
@@ -677,7 +782,33 @@ export class RutaDetalle {
   }
 
   llegada(): void {
-    this.accion('llegada-base', 'Llegada confirmada. La ruta quedó finalizada.');
+    if (this.ruta().estado !== 'EN_PROCESO' || !this.todasCerradas()) return;
+    this.error.set('');
+    this.kmFinal.set('');
+    this.confirmacion.set('llegada');
+  }
+
+  confirmarLlegada(): void {
+    const km = leerKilometraje(this.kmFinal());
+    if (km == null) {
+      this.error.set('Escribe el kilometraje al llegar a la base. Usa un número de 0 en adelante.');
+      return;
+    }
+    const inicial = numero(this.ruta().km_inicial);
+    if (inicial != null && km < inicial) {
+      this.error.set(`El kilometraje final no puede ser menor que el inicial (${textoKilometraje(inicial)} km).`);
+      return;
+    }
+    this.enviando.set(true);
+    this.api.post(`/api/rutas/${this.ruta().id}/llegada-base/`, { km_final: km }).subscribe({
+      next: () => {
+        this.confirmacion.set('');
+        this.aviso.set('Llegada confirmada. La ruta quedó finalizada.');
+        this.enviando.set(false);
+        this.recargar();
+      },
+      error: (err: unknown) => this.fallo(err),
+    });
   }
 
   alGeoreferenciar(): void {

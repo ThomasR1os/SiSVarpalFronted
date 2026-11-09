@@ -3,10 +3,11 @@ import { forkJoin } from 'rxjs';
 import { Api, guardarBlob } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { Destino, Ruta } from '../../core/models';
-import { duracion, etiquetaEstado, etiquetaTipo, fechaCorta, horaCorta, nombrePersona } from '../../core/texto';
+import { duracion, etiquetaEstado, etiquetaTipo, fechaCorta, horaCorta, nombrePersona, textoMotivo } from '../../core/texto';
 import { Badge } from '../../shared/badge';
 import { Mapa } from '../../shared/mapa/mapa';
-import { lineaGeo, marcasRuta } from '../../shared/mapa/marcas';
+import { MapaSeguimiento } from '../../shared/mapa/mapa-seguimiento';
+import { marcasRuta } from '../../shared/mapa/marcas';
 import { Paginacion } from '../../shared/paginacion';
 import { codigoRuta, etiquetaZona, listarDestinosCliente, listarRutasCliente } from './rutas-cliente';
 
@@ -14,7 +15,7 @@ const POR_PAGINA = 10;
 
 @Component({
   selector: 'app-cliente-rutas',
-  imports: [Badge, Mapa, Paginacion],
+  imports: [Badge, Mapa, MapaSeguimiento, Paginacion],
   host: { class: 'flex flex-col gap-4' },
   template: `
     @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
@@ -133,6 +134,7 @@ const POR_PAGINA = 10;
                     <th>Código</th>
                     <th>Destinatario</th>
                     <th>Dirección</th>
+                    <th>Motivo</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
@@ -143,10 +145,11 @@ const POR_PAGINA = 10;
                       <td data-label="Código">{{ parada.codigo_externo }}</td>
                       <td data-label="Destinatario">{{ nombreParada(parada) }}</td>
                       <td data-label="Dirección">{{ parada.direccion }}, {{ parada.distrito }}</td>
+                      <td class="max-w-xs whitespace-normal" data-label="Motivo">{{ motivoDe(parada.destino_id) }}</td>
                       <td data-label="Estado"><app-badge [estado]="parada.estado" /></td>
                     </tr>
                   } @empty {
-                    <tr class="fila-vacia"><td colspan="5">No hay paradas con este filtro.</td></tr>
+                    <tr class="fila-vacia"><td colspan="6">No hay paradas con este filtro.</td></tr>
                   }
                 </tbody>
               </table>
@@ -155,11 +158,9 @@ const POR_PAGINA = 10;
           </article>
 
           <article class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
-            <h2 class="text-base">Mapa de la ruta</h2>
-            <p class="ayuda mb-3">Recorrido publicado y paradas de {{ codigoRuta(ruta) }}.</p>
-            <div class="mapa-caja">
-              <app-mapa [marcas]="marcasLocal()" [geometria]="geometriaLocal()" [encuadre]="'ruta-local-' + ruta.id" />
-            </div>
+            <h2 class="text-base">Mapa de seguimiento</h2>
+            <p class="ayuda mb-3">Recorrido, paradas y camión en vivo de {{ codigoRuta(ruta) }}. Se actualiza cada 10 segundos.</p>
+            <app-mapa-seguimiento [ruta]="ruta" />
             @if (unidadVisible(ruta)) {
               <div class="mt-3 rounded-xl border border-base-300 p-3">
                 <p class="text-sm font-semibold">Unidad en ruta</p>
@@ -210,6 +211,7 @@ const POR_PAGINA = 10;
                   <th>Destinatario</th>
                   <th>Distrito</th>
                   <th>Tipo</th>
+                  <th>Motivo</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -222,10 +224,11 @@ const POR_PAGINA = 10;
                     </td>
                     <td data-label="Distrito">{{ destino.distrito || 'Sin distrito' }}</td>
                     <td data-label="Tipo">{{ etiquetaTipo(destino.tipo_servicio) }}</td>
+                    <td class="max-w-xs whitespace-normal" data-label="Motivo">{{ motivoDe(destino.id) }}</td>
                     <td data-label="Estado"><app-badge [estado]="destino.estado" /></td>
                   </tr>
                 } @empty {
-                  <tr class="fila-vacia"><td colspan="4">No hay destinos en este filtro.</td></tr>
+                  <tr class="fila-vacia"><td colspan="5">No hay destinos en este filtro.</td></tr>
                 }
               </tbody>
             </table>
@@ -346,17 +349,6 @@ export class ClienteRutas {
     return filas.slice(0, 8).map(([nombre, total]) => ({ nombre, total, ancho: Math.round((total / maximo) * 100) }));
   });
   protected readonly enCurso = computed(() => this.enFecha().rutas.some((ruta) => ruta.estado === 'EN_PROCESO'));
-  protected readonly marcasLocal = computed(() => {
-    const ruta = this.rutaActual();
-    if (!ruta) return [];
-    return marcasRuta({
-      paradas: ruta.paradas,
-      origen: ruta.base_origen,
-      camion: this.unidadVisible(ruta) ? { latitud: ruta.ultima_latitud ?? '', longitud: ruta.ultima_longitud ?? '' } : null,
-      camionId: ruta.id,
-    });
-  });
-  protected readonly geometriaLocal = computed(() => lineaGeo(this.rutaActual()?.geometria_cliente));
   protected readonly marcasProvincia = computed(() =>
     marcasRuta({
       paradas: this.destinosProvincia().map((destino, indice) => ({
@@ -462,6 +454,10 @@ export class ClienteRutas {
     return `${parada.nombre_receptor} ${parada.apellido_receptor}`.trim() || '—';
   }
 
+  motivoDe(destinoId: number): string {
+    return textoMotivo(this.destinos().find((destino) => destino.id === destinoId));
+  }
+
   nombreDestino(destino: Destino): string {
     return `${destino.nombre_receptor} ${destino.apellido_receptor}`.trim() || '—';
   }
@@ -478,25 +474,27 @@ export class ClienteRutas {
   exportarLocal(): void {
     const ruta = this.rutaActual();
     if (!ruta) return;
-    const encabezado = ['Hora', 'Código', 'Destinatario', 'Dirección', 'Distrito', 'Estado'];
+    const encabezado = ['Hora', 'Código', 'Destinatario', 'Dirección', 'Distrito', 'Motivo', 'Estado'];
     const filas = this.paradasLocal().map((parada) => [
       horaCorta(parada.hora_estimada),
       parada.codigo_externo,
       this.nombreParada(parada),
       parada.direccion,
       parada.distrito,
+      this.motivoDe(parada.destino_id),
       etiquetaEstado(parada.estado),
     ]);
     descargarCsv(`ruta-${codigoRuta(ruta)}.csv`, encabezado, filas);
   }
 
   exportarProvincia(): void {
-    const encabezado = ['Código', 'Destinatario', 'Distrito', 'Tipo', 'Estado', 'Dirección'];
+    const encabezado = ['Código', 'Destinatario', 'Distrito', 'Tipo', 'Motivo', 'Estado', 'Dirección'];
     const filas = this.destinosProvincia().map((destino) => [
       destino.codigo_externo,
       this.nombreDestino(destino),
       destino.distrito,
       etiquetaTipo(destino.tipo_servicio),
+      textoMotivo(destino),
       etiquetaEstado(destino.estado),
       destino.direccion,
     ]);

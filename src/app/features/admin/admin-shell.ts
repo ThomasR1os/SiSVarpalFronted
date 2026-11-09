@@ -97,6 +97,12 @@ import { etiquetaRol, fechaHora, nombrePersona } from '../../core/texto';
                     @case ('programacion') {
                       <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 3.5v3M16 3.5v3M4.5 9h15" /><rect x="4.5" y="5" width="15" height="14.5" rx="2" /></svg>
                     }
+                    @case ('rutas') {
+                      <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 20l-5.4-2.2A2 2 0 012 15.9V6.6a2 2 0 011.3-1.9L9 2m0 18l6-2.4M9 20V2m6 15.6l5.4 2.2A2 2 0 0022 17.9V6.1a2 2 0 00-1.3-1.9L15 2m0 15.6V2" /></svg>
+                    }
+                    @case ('reportes') {
+                      <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.6a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2z" /></svg>
+                    }
                     @case ('seguimiento') {
                       <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" /><circle cx="12" cy="10" r="2.2" /></svg>
                     }
@@ -157,6 +163,8 @@ export class AdminShell {
     { ruta: '/admin/indicadores', nombre: 'Indicadores VARPAL', icono: 'indicadores' },
     { ruta: '/admin/clientes', nombre: 'Clientes', icono: 'clientes' },
     { ruta: '/admin/programacion', nombre: 'Programación', icono: 'programacion' },
+    { ruta: '/admin/rutas', nombre: 'Rutas programadas', icono: 'rutas' },
+    { ruta: '/admin/reportes', nombre: 'Reportes', icono: 'reportes' },
     { ruta: '/admin/seguimiento', nombre: 'Seguimiento', icono: 'seguimiento' },
     { ruta: '/admin/evidencias', nombre: 'Evidencias', icono: 'evidencias' },
     { ruta: '/admin/servicios', nombre: 'Servicios internos', icono: 'servicios' },
@@ -240,8 +248,14 @@ function textoSeccion(url: string): { titulo: string; detalle: string } {
   if (url.includes('/admin/programacion') || url.includes('/admin/operacion')) {
     return { titulo: 'Programación', detalle: 'Planifica y asigna rutas por cliente, operación y servicio.' };
   }
+  if (url.includes('/admin/rutas')) {
+    return { titulo: 'Rutas programadas', detalle: 'Paradas, unidad y mapa de seguimiento de las rutas publicadas.' };
+  }
+  if (url.includes('/admin/reportes')) {
+    return { titulo: 'Reportes', detalle: 'Pedidos de las rutas publicadas, con estado, motivo y responsable.' };
+  }
   if (url.includes('/admin/seguimiento') || url.includes('/admin/mapa')) {
-    return { titulo: 'Seguimiento', detalle: 'Camiones y paradas de rutas ya iniciadas, dentro de Lima.' };
+    return { titulo: 'Seguimiento', detalle: 'Vehículos en servicio, con conductor, placa y posición en vivo.' };
   }
   if (url.includes('/admin/evidencias')) {
     return { titulo: 'Evidencias', detalle: 'Fotos de cierre de cada parada.' };

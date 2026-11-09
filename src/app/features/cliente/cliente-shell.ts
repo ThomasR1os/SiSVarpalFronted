@@ -141,7 +141,7 @@ function textoSeccion(url: string): { titulo: string; detalle: string } {
     return { titulo: 'Inicio', detalle: 'Pedidos, avance y cobertura de tu operación.' };
   }
   if (url.includes('/cliente/dashboard')) {
-    return { titulo: 'Indicadores', detalle: 'Pedidos, avance y cobertura de tu operación.' };
+    return { titulo: 'Indicadores', detalle: 'Pedidos, avance, kilómetros y horas de tu operación.' };
   }
   if (url.includes('/cliente/reporte')) {
     return { titulo: 'Reporte', detalle: 'Detalle de pedidos, con estado y responsable.' };

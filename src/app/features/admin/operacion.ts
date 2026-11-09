@@ -6,12 +6,12 @@ import { EMPTY, expand, reduce } from 'rxjs';
 import { Api, guardarBlob } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { CatalogoRuta, Catalogos } from '../../core/catalogos';
+import { columnasExcel, valoresExcel } from '../../core/columnas-destino';
 import { Cliente, Destino, ImportacionDestinos, Optimizacion, Pagina, Punto, Ruta, TipoServicio } from '../../core/models';
 import {
   TAMANO_CATALOGO,
   estadoCerrado,
   etiquetaEstado,
-  etiquetaTipo,
   fechaCorta,
   hoy,
   idOpcional,
@@ -35,7 +35,6 @@ export class Operacion {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly fechaCorta = fechaCorta;
-  protected readonly etiquetaTipo = etiquetaTipo;
   protected readonly nombrePersona = nombrePersona;
   protected readonly fecha = signal(hoy());
   protected readonly clienteId = signal<number | null>(null);
@@ -126,23 +125,21 @@ export class Operacion {
   protected readonly vehiculoActual = computed(() =>
     this.catalogo()?.vehiculos.find((vehiculo) => vehiculo.id === Number(this.vehiculoId())) ?? null,
   );
+  protected readonly sedesPorId = computed(() => new Map(this.sedes().map((sede) => [sede.id, sede.codigo])));
   protected readonly destinosVisibles = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
     const tipo = this.tipoServicio();
+    const sedes = this.sedesPorId();
     return this.destinos().filter((destino) => {
       if (tipo && destino.tipo_servicio !== tipo) return false;
       if (!texto) return true;
-      const blob = [
-        destino.documento_receptor,
-        destino.codigo_externo,
-        destino.nombre_receptor,
-        destino.apellido_receptor,
-        destino.direccion,
-        destino.distrito,
-      ].join(' ').toLowerCase();
+      const blob = Object.values(valoresExcel(destino, sedes.get(destino.sede_id ?? 0) ?? '')).join(' ').toLowerCase();
       return blob.includes(texto);
     });
   });
+  protected readonly columnasDestino = computed(() =>
+    columnasExcel(this.destinosVisibles().map((destino) => valoresExcel(destino, this.sedesPorId().get(destino.sede_id ?? 0) ?? ''))),
+  );
   protected readonly avisoEdicion = computed(() => {
     const destino = this.editando();
     const ruta = this.rutaAccion();
@@ -503,6 +500,10 @@ export class Operacion {
 
   pedirEliminarRuta(ruta: Ruta): void {
     this.error.set('');
+    if (ruta.estado === 'FINALIZADA') {
+      this.error.set('No se puede eliminar una ruta finalizada.');
+      return;
+    }
     this.editando.set(null);
     this.rutaAccion.set(ruta);
     this.dialogo.set('eliminarRuta');
@@ -510,7 +511,7 @@ export class Operacion {
 
   confirmarEliminarRuta(): void {
     const ruta = this.rutaAccion();
-    if (!ruta) return;
+    if (!ruta || ruta.estado === 'FINALIZADA') return;
     this.enviando.set(true);
     this.api.delete(`/api/rutas/${ruta.id}/`).subscribe({
       next: () => {
@@ -730,26 +731,17 @@ export class Operacion {
   }
 
   exportarDestinos(): void {
-    const filas = this.destinosVisibles();
-    const encabezado = ['Documento', 'Destinatario', 'Dirección', 'Distrito', 'Tipo', 'Estado'];
-    const lineas = [encabezado, ...filas.map((destino) => [
-      this.documentoDestino(destino),
-      this.nombreDestinatario(destino),
-      destino.direccion,
-      destino.distrito,
-      etiquetaTipo(destino.tipo_servicio),
-      this.textoEstado(destino.estado),
-    ])].map((cols) => cols.map((valor) => `"${String(valor).replaceAll('"', '""')}"`).join(',')).join('\n');
-    guardarBlob(new Blob([lineas], { type: 'text/csv;charset=utf-8' }), 'destinatarios.csv');
+    const columnas = this.columnasDestino();
+    const encabezado = [...columnas.map((columna) => columna.etiqueta), 'Estado'];
+    const lineas = [encabezado, ...this.destinosVisibles().map((destino) => {
+      const fila = this.filaExcel(destino);
+      return [...columnas.map((columna) => fila[columna.clave] ?? '—'), this.textoEstado(destino.estado)];
+    })].map((cols) => cols.map((valor) => `"${String(valor).replaceAll('"', '""')}"`).join(',')).join('\n');
+    guardarBlob(new Blob([`\uFEFF${lineas}`], { type: 'text/csv;charset=utf-8' }), 'destinatarios.csv');
   }
 
-  documentoDestino(destino: Destino): string {
-    return destino.documento_receptor || destino.codigo_externo;
-  }
-
-  nombreDestinatario(destino: Destino): string {
-    const nombre = `${destino.nombre_receptor} ${destino.apellido_receptor}`.trim();
-    return nombre || destino.codigo_externo;
+  filaExcel(destino: Destino): Record<string, string> {
+    return valoresExcel(destino, this.sedesPorId().get(destino.sede_id ?? 0) ?? '');
   }
 
   destinoLibre(destino: Destino): boolean {

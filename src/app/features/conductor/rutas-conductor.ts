@@ -51,7 +51,7 @@ const PALETA = ['#1769e0', '#7c3aed', '#ea580c', '#0d9488', '#db2777', '#ca8a04'
         } @else {
           <ng-container *ngTemplateOutlet="selector" />
 
-          <div class="grid grid-cols-3 gap-2 sm:gap-3">
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
             @for (item of resumen(); track item.texto) {
               <div class="flex items-center gap-2 rounded-box border p-2.5 sm:gap-3 sm:p-3.5" [class]="item.caja">
                 <span class="hidden size-10 shrink-0 place-items-center rounded-full min-[380px]:grid sm:size-11" [class]="item.burbuja">
@@ -179,7 +179,7 @@ const PALETA = ['#1769e0', '#7c3aed', '#ea580c', '#0d9488', '#db2777', '#ca8a04'
           <span class="cd-dato"><app-icono nombre="pin" class="size-5" /><span class="min-w-0"><span class="cd-dato-label">Destinos</span>{{ ruta.paradas.length }}</span></span>
           <span class="cd-dato"><app-icono nombre="reloj" class="size-5" /><span class="min-w-0"><span class="cd-dato-label">Horario</span><span class="block truncate">{{ horario(ruta) }}</span></span></span>
         </span>
-        <span class="flex w-full items-center gap-2 border-t border-base-300/70 pt-3">
+        <span class="flex w-full flex-wrap items-center gap-2 border-t border-base-300/70 pt-3">
           @for (item of conteo; track item.texto) {
             <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" [class]="item.burbuja">
               <app-icono [nombre]="item.icono" class="size-3.5" /> {{ item.valor }} {{ item.texto }}

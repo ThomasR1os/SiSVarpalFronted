@@ -10,9 +10,12 @@ import {
   horaCorta,
   horarioParadas,
   hoy,
+  leerKilometraje,
   nombrePersona,
+  numero,
   paradasCerradas,
   textoAuxiliares,
+  textoKilometraje,
 } from '../../core/texto';
 import { Modal } from '../../shared/modal';
 import { Mapa } from '../../shared/mapa/mapa';
@@ -56,38 +59,59 @@ export interface ItemResumen {
 }
 
 export function resumenParadas(paradas: Parada[]): ItemResumen[] {
-  const exitosas = paradas.filter((p) => p.estado === 'EXITOSO').length;
-  const fallidas = paradas.filter((p) => p.estado === 'FALLIDO' || p.estado === 'REPROGRAMADO').length;
+  const exitosos = paradas.filter((p) => p.estado === 'EXITOSO').length;
+  const fallidos = paradas.filter((p) => p.estado === 'FALLIDO').length;
+  const reprogramados = paradas.filter((p) => p.estado === 'REPROGRAMADO').length;
   return [
     {
       texto: 'Pendientes',
-      valor: paradas.length - exitosas - fallidas,
+      valor: paradas.length - exitosos - fallidos - reprogramados,
       icono: 'reloj',
       caja: 'border-amber-200 bg-amber-50',
       burbuja: 'bg-amber-100 text-amber-600',
       color: 'text-amber-700',
     },
     {
-      texto: 'Exitosas',
-      valor: exitosas,
+      texto: 'Exitosos',
+      valor: exitosos,
       icono: 'check',
       caja: 'border-emerald-200 bg-emerald-50',
       burbuja: 'bg-emerald-100 text-emerald-600',
       color: 'text-emerald-700',
     },
     {
-      texto: 'Fallidas',
-      valor: fallidas,
+      texto: 'Fallidos',
+      valor: fallidos,
       icono: 'x-circulo',
       caja: 'border-red-200 bg-red-50',
       burbuja: 'bg-red-100 text-red-600',
       color: 'text-red-700',
+    },
+    {
+      texto: 'Reprogramados',
+      valor: reprogramados,
+      icono: 'calendario',
+      caja: 'border-violet-200 bg-violet-50',
+      burbuja: 'bg-violet-100 text-violet-700',
+      color: 'text-violet-700',
     },
   ];
 }
 
 function atendida(parada: Parada): boolean {
   return parada.estado === 'EXITOSO' || parada.estado === 'FALLIDO' || parada.estado === 'REPROGRAMADO';
+}
+
+function numeroContacto(telefono: string): string {
+  const primer = telefono.trim().split(/[/|;,]/)[0] ?? '';
+  let digitos = primer.replace(/\D/g, '');
+  if (digitos.startsWith('00')) digitos = digitos.slice(2);
+  if (digitos.startsWith('51') && digitos.length >= 10 && digitos.length <= 12) {
+    return digitos.length === 12 ? digitos.slice(0, 11) : digitos;
+  }
+  if (digitos.startsWith('0')) digitos = digitos.replace(/^0+/, '');
+  if (digitos.length === 8 || digitos.length === 9) return `51${digitos}`;
+  return digitos.length >= 10 ? digitos : '';
 }
 
 @Component({
@@ -127,18 +151,7 @@ function atendida(parada: Parada): boolean {
                 }
               </div>
               @if (telefono(parada) || parada.estado !== 'EN_PROCESO') {
-                <div class="grid gap-2" [class.grid-cols-2]="!!telefono(parada) && parada.estado !== 'EN_PROCESO'">
-                  @if (telefono(parada); as tel) {
-                    <a class="btn min-h-12 gap-2 rounded-xl border-azul/40 bg-azul/5 text-base text-azul hover:bg-azul/10" [href]="'tel:' + tel">
-                      <app-icono nombre="telefono" class="size-5" /> Llamar
-                    </a>
-                  }
-                  @if (parada.estado !== 'EN_PROCESO') {
-                    <a class="cd-btn" [href]="navegar(parada)" target="_blank" rel="noopener">
-                      <app-icono nombre="navegar" class="size-5" /> Navegar
-                    </a>
-                  }
-                </div>
+                <ng-container *ngTemplateOutlet="contacto; context: { $implicit: parada, conNavegar: parada.estado !== 'EN_PROCESO' }" />
               }
             </section>
 
@@ -186,7 +199,7 @@ function atendida(parada: Parada): boolean {
           }
 
           @if (modo() === 'listado') {
-            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               @for (item of resumen(); track item.texto) {
                 <div class="flex items-center gap-2 rounded-box border p-2.5 sm:gap-3 sm:p-3.5" [class]="item.caja">
                   <span class="hidden size-10 shrink-0 place-items-center rounded-full min-[380px]:grid sm:size-11" [class]="item.burbuja">
@@ -201,7 +214,7 @@ function atendida(parada: Parada): boolean {
               }
             </div>
           } @else {
-            <div class="grid grid-cols-3 divide-x divide-base-300/70 rounded-box border border-base-300/70 bg-base-100 py-2.5 shadow-sm">
+            <div class="grid grid-cols-2 divide-base-300/70 rounded-box border border-base-300/70 bg-base-100 py-2.5 shadow-sm sm:grid-cols-4 sm:divide-x">
               @for (item of resumen(); track item.texto) {
                 <div class="flex items-center justify-center gap-2 px-2">
                   <span class="grid size-8 shrink-0 place-items-center rounded-full" [class]="item.burbuja"><app-icono [nombre]="item.icono" class="size-5" /></span>
@@ -289,6 +302,15 @@ function atendida(parada: Parada): boolean {
                     <p class="cd-dato"><app-icono nombre="grupo" class="size-5" /><span><span class="cd-dato-label">Auxiliares</span>{{ auxiliares() }}</span></p>
                   </div>
                 </div>
+                @if (ruta.km_inicial != null || ruta.km_final != null) {
+                  <p class="cd-dato text-sm">
+                    <app-icono nombre="camion" class="size-5" />
+                    <span>
+                      <span class="cd-dato-label">Kilometraje</span>
+                      {{ textoKilometraje(ruta.km_inicial) || '—' }} → {{ textoKilometraje(ruta.km_final) || '—' }}
+                    </span>
+                  </p>
+                }
               </article>
 
               <article class="cd-card gap-0 overflow-hidden p-0">
@@ -362,16 +384,7 @@ function atendida(parada: Parada): boolean {
                       <span class="min-w-0"><span class="cd-dato-label">Ventana de atención</span><strong class="block font-display text-lg leading-tight">Por confirmar</strong><span class="text-xs text-base-content/55">{{ diaRuta() }}</span></span>
                     </p>
                   </div>
-                  <div class="grid gap-2" [class.grid-cols-2]="!!telefono(parada)">
-                    @if (telefono(parada); as tel) {
-                      <a class="btn min-h-12 gap-2 rounded-xl border-azul/40 bg-azul/5 text-base text-azul hover:bg-azul/10" [href]="'tel:' + tel">
-                        <app-icono nombre="telefono" class="size-5" /> Llamar
-                      </a>
-                    }
-                    <a class="cd-btn" [href]="navegar(parada)" target="_blank" rel="noopener">
-                      <app-icono nombre="navegar" class="size-5" /> Navegar
-                    </a>
-                  </div>
+                  <ng-container *ngTemplateOutlet="contacto; context: { $implicit: parada, conNavegar: true }" />
                 } @else {
                   <p class="vacio-texto">{{ paradas().length ? 'Todos los destinos están cerrados.' : 'La ruta no tiene destinos.' }}</p>
                 }
@@ -383,6 +396,33 @@ function atendida(parada: Parada): boolean {
           }
         }
       </div>
+
+      <ng-template #contacto let-parada let-conNavegar="conNavegar">
+        <div class="flex flex-col gap-2">
+          @if (telefono(parada); as tel) {
+            <p class="text-sm text-base-content/70">Celular del destino: <strong class="font-semibold text-base-content">{{ tel }}</strong></p>
+            <div class="grid gap-2" [class]="columnasContacto(tel, conNavegar)">
+              <a class="btn min-h-12 gap-1.5 rounded-xl border-azul/40 bg-azul/5 px-2 text-sm text-azul hover:bg-azul/10" [href]="enlaceLlamada(tel)">
+                <app-icono nombre="telefono" class="size-5" /> Llamar
+              </a>
+              @if (puedeWhatsapp(tel)) {
+                <a class="btn min-h-12 gap-1.5 rounded-xl border-0 bg-emerald-500 px-2 text-sm text-white hover:bg-emerald-600" [href]="enlaceWhatsapp(tel)" target="_blank" rel="noopener">
+                  <app-icono nombre="whatsapp" class="size-5" /> WhatsApp
+                </a>
+              }
+              @if (conNavegar) {
+                <a class="cd-btn px-2 text-sm" [href]="navegar(parada)" target="_blank" rel="noopener">
+                  <app-icono nombre="navegar" class="size-5" /> Navegar
+                </a>
+              }
+            </div>
+          } @else if (conNavegar) {
+            <a class="cd-btn" [href]="navegar(parada)" target="_blank" rel="noopener">
+              <app-icono nombre="navegar" class="size-5" /> Navegar
+            </a>
+          }
+        </div>
+      </ng-template>
 
       <ng-template #chip let-parada>
         <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" [class]="estilo(parada).chip">
@@ -415,11 +455,26 @@ function atendida(parada: Parada): boolean {
             <p class="text-sm text-base-content/70">¿Confirmas tu llegada a la base Varpal? La ruta quedará finalizada.</p>
           </div>
 
+          <label class="flex flex-col gap-1.5 text-left">
+            <span class="text-sm font-semibold">Kilometraje final</span>
+            <input class="input min-h-12 w-full rounded-xl" type="number" inputmode="decimal" min="0" max="9999999" step="0.1" [value]="kmFinal()" (input)="kmFinal.set(texto($event))" placeholder="Ej. 45380" />
+            <span class="text-xs text-base-content/55">
+              @if (textoKilometraje(ruta.km_inicial); as inicial) {
+                Saliste con {{ inicial }} km. Anota el odómetro al llegar.
+              } @else {
+                Anota el odómetro del vehículo al llegar a la base.
+              }
+            </span>
+          </label>
+
           <div class="flex flex-col gap-2 rounded-box border border-base-300/70 bg-base-200/40 p-3 text-sm">
             <p class="flex items-center gap-2"><app-icono nombre="edificio" class="size-5 text-primary" /><strong class="min-w-0 truncate">{{ ruta.cliente_nombre }}</strong></p>
             <div class="flex flex-wrap gap-x-4 gap-y-1">
-              <span class="flex items-center gap-1.5 font-semibold text-emerald-700"><app-icono nombre="check" class="size-4" /> {{ resumen()[1].valor }} exitosas</span>
-              <span class="flex items-center gap-1.5 font-semibold text-red-700"><app-icono nombre="x-circulo" class="size-4" /> {{ resumen()[2].valor }} fallidas</span>
+              @for (item of resumen(); track item.texto) {
+                <span class="flex items-center gap-1.5 font-semibold" [class]="item.color">
+                  <app-icono [nombre]="item.icono" class="size-4" /> {{ item.valor }} {{ item.texto.toLowerCase() }}
+                </span>
+              }
               <span class="text-base-content/60">de {{ paradas().length }} destinos</span>
             </div>
           </div>
@@ -428,13 +483,39 @@ function atendida(parada: Parada): boolean {
 
           <div class="grid grid-cols-2 gap-2">
             <button type="button" class="btn min-h-12 rounded-xl border-base-300 bg-base-100 text-base" (click)="cerrarFinalizar()" [disabled]="enviando()">Cancelar</button>
-            <button type="button" class="cd-btn" (click)="confirmarFinalizar()" [disabled]="enviando()">
+            <button type="button" class="cd-btn" (click)="confirmarFinalizar()" [disabled]="enviando() || !kmFinal().trim()">
               @if (enviando()) { <span class="loading loading-spinner loading-sm"></span> } @else { <app-icono nombre="bandera" class="size-5" /> }
               Finalizar ruta
             </button>
           </div>
         </div>
         <div class="modal-backdrop" (click)="cerrarFinalizar()"></div>
+      </dialog>
+
+      <dialog #dialogoInicio class="modal modal-bottom sm:modal-middle" aria-labelledby="titulo-iniciar" (cancel)="cancelarInicio($event)" (close)="confirmarInicio.set(false)">
+        <div class="modal-box flex flex-col gap-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-box sm:p-6">
+          <div class="flex flex-col items-center gap-3 text-center">
+            <span class="grid size-16 place-items-center rounded-full bg-azul/10 text-azul">
+              <app-icono nombre="play" class="size-8" />
+            </span>
+            <h2 id="titulo-iniciar" class="font-display text-xl">Iniciar ruta</h2>
+            <p class="text-sm text-base-content/70">Anota el kilometraje del tablero antes de salir. La ruta quedará en proceso.</p>
+          </div>
+          <label class="flex flex-col gap-1.5 text-left">
+            <span class="text-sm font-semibold">Kilometraje inicial</span>
+            <input class="input min-h-12 w-full rounded-xl" type="number" inputmode="decimal" min="0" max="9999999" step="0.1" [value]="kmInicial()" (input)="kmInicial.set(texto($event))" placeholder="Ej. 45230" />
+            <span class="text-xs text-base-content/55">Lee el odómetro del vehículo {{ ruta.vehiculo?.placa || '' }}.</span>
+          </label>
+          @if (errorInicio()) { <div class="alert alert-error text-sm" role="alert">{{ errorInicio() }}</div> }
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" class="btn min-h-12 rounded-xl border-base-300 bg-base-100 text-base" (click)="cerrarInicio()" [disabled]="enviando()">Cancelar</button>
+            <button type="button" class="cd-btn" (click)="confirmarIniciar()" [disabled]="enviando() || !kmInicial().trim()">
+              @if (enviando()) { <span class="loading loading-spinner loading-sm"></span> } @else { <app-icono nombre="play" class="size-5" /> }
+              Iniciar ruta
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" (click)="cerrarInicio()"></div>
       </dialog>
     }
   `,
@@ -466,8 +547,13 @@ export class RutaConductor {
   protected readonly error = signal('');
   protected readonly aviso = signal('');
   protected readonly enviando = signal(false);
+  protected readonly confirmarInicio = signal(false);
   protected readonly confirmarFinal = signal(false);
+  protected readonly kmInicial = signal('');
+  protected readonly kmFinal = signal('');
+  protected readonly errorInicio = signal('');
   protected readonly errorFinal = signal('');
+  protected readonly textoKilometraje = textoKilometraje;
   protected readonly trasladoAbierto = signal(false);
   protected readonly sedes = signal<Punto[]>([]);
   protected readonly cargandoSedes = signal(false);
@@ -475,6 +561,7 @@ export class RutaConductor {
   protected readonly codigoTraslado = signal('');
   protected readonly motivoTraslado = signal('');
   protected readonly errorTraslado = signal('');
+  private readonly dialogoInicio = viewChild<ElementRef<HTMLDialogElement>>('dialogoInicio');
   private readonly dialogoFinal = viewChild<ElementRef<HTMLDialogElement>>('dialogoFinal');
 
   protected readonly paradas = computed(() => [...this.ruta().paradas].sort((a, b) => a.orden - b.orden));
@@ -569,18 +656,17 @@ export class RutaConductor {
         this.focoId.set(null);
         this.error.set('');
         this.aviso.set('');
+        this.confirmarInicio.set(false);
         this.confirmarFinal.set(false);
       }
     });
     effect(() => {
-      const dialogo = this.dialogoFinal()?.nativeElement;
-      if (!dialogo) return;
-      if (this.confirmarFinal() && !dialogo.open) dialogo.showModal();
-      else if (!this.confirmarFinal() && dialogo.open) dialogo.close();
+      this.sincronizarDialogo(this.dialogoInicio()?.nativeElement, this.confirmarInicio());
+      this.sincronizarDialogo(this.dialogoFinal()?.nativeElement, this.confirmarFinal());
     });
     effect(() => {
       for (const parada of [this.foco(), this.seleccionada()]) {
-        if (parada) this.cargarTelefono(parada.destino_id);
+        if (parada && !parada.telefono_receptor?.trim()) this.cargarTelefono(parada.destino_id);
       }
     });
     const reloj = window.setInterval(() => this.ahora.set(Date.now()), 30000);
@@ -633,7 +719,29 @@ export class RutaConductor {
   }
 
   telefono(parada: Parada): string {
-    return this.telefonos()[parada.destino_id] ?? '';
+    const enParada = parada.telefono_receptor?.trim();
+    if (enParada) return enParada;
+    return (this.telefonos()[parada.destino_id] ?? '').trim();
+  }
+
+  enlaceLlamada(telefono: string): string {
+    const numero = numeroContacto(telefono);
+    return numero ? `tel:+${numero}` : `tel:${telefono.trim()}`;
+  }
+
+  puedeWhatsapp(telefono: string): boolean {
+    return numeroContacto(telefono).length > 0;
+  }
+
+  enlaceWhatsapp(telefono: string): string {
+    return `https://wa.me/${numeroContacto(telefono)}`;
+  }
+
+  columnasContacto(telefono: string, conNavegar: boolean): string {
+    const acciones = 1 + Number(this.puedeWhatsapp(telefono)) + Number(!!conNavegar);
+    if (acciones >= 3) return 'grid-cols-3';
+    if (acciones === 2) return 'grid-cols-2';
+    return 'grid-cols-1';
   }
 
   navegar(parada: Parada): string {
@@ -740,11 +848,47 @@ export class RutaConductor {
   }
 
   iniciar(): void {
-    this.accion('iniciar', 'Ruta iniciada. Los administradores reciben el aviso.');
+    if (!this.puedeIniciar() || this.ruta().estado !== 'NO_INICIADA') return;
+    this.errorInicio.set('');
+    this.kmInicial.set('');
+    this.confirmarInicio.set(true);
+  }
+
+  cerrarInicio(): void {
+    if (!this.enviando()) this.confirmarInicio.set(false);
+  }
+
+  cancelarInicio(evento: Event): void {
+    evento.preventDefault();
+    this.cerrarInicio();
+  }
+
+  confirmarIniciar(): void {
+    const km = leerKilometraje(this.kmInicial());
+    if (km == null) {
+      this.errorInicio.set('Escribe el kilometraje del tablero. Usa un número de 0 en adelante.');
+      return;
+    }
+    this.enviando.set(true);
+    this.errorInicio.set('');
+    this.api.post(`/api/rutas/${this.ruta().id}/iniciar/`, { km_inicial: km }).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.confirmarInicio.set(false);
+        this.error.set('');
+        this.aviso.set('Ruta iniciada. Los administradores reciben el aviso.');
+        this.recargar();
+      },
+      error: (err: unknown) => {
+        this.enviando.set(false);
+        this.errorInicio.set(mensajeError(err));
+      },
+    });
   }
 
   finalizar(): void {
     this.errorFinal.set('');
+    this.kmFinal.set('');
     this.confirmarFinal.set(true);
   }
 
@@ -758,9 +902,19 @@ export class RutaConductor {
   }
 
   confirmarFinalizar(): void {
+    const km = leerKilometraje(this.kmFinal());
+    if (km == null) {
+      this.errorFinal.set('Escribe el kilometraje al llegar a la base. Usa un número de 0 en adelante.');
+      return;
+    }
+    const inicial = numero(this.ruta().km_inicial);
+    if (inicial != null && km < inicial) {
+      this.errorFinal.set(`El kilometraje final no puede ser menor que el inicial (${textoKilometraje(inicial)} km).`);
+      return;
+    }
     this.enviando.set(true);
     this.errorFinal.set('');
-    this.api.post(`/api/rutas/${this.ruta().id}/llegada-base/`, {}).subscribe({
+    this.api.post(`/api/rutas/${this.ruta().id}/llegada-base/`, { km_final: km }).subscribe({
       next: () => {
         this.enviando.set(false);
         this.confirmarFinal.set(false);
@@ -773,6 +927,12 @@ export class RutaConductor {
         this.errorFinal.set(mensajeError(err));
       },
     });
+  }
+
+  private sincronizarDialogo(dialogo: HTMLDialogElement | undefined, abierto: boolean): void {
+    if (!dialogo) return;
+    if (abierto && !dialogo.open) dialogo.showModal();
+    else if (!abierto && dialogo.open) dialogo.close();
   }
 
   private recargar(): void {
@@ -803,7 +963,7 @@ export class RutaConductor {
     this.pedidos.add(destinoId);
     this.api.get<Destino>(`/api/destinos/${destinoId}/`).subscribe({
       next: (destino) =>
-        this.telefonos.update((actual) => ({ ...actual, [destinoId]: destino.telefono_receptor.trim() })),
+        this.telefonos.update((actual) => ({ ...actual, [destinoId]: (destino.telefono_receptor ?? '').trim() })),
       error: () => this.pedidos.delete(destinoId),
     });
   }

@@ -38,6 +38,13 @@ import { rutaPorRol } from '../../core/texto';
             <button class="btn btn-lg join-item" type="button" (click)="verClave.set(!verClave())">{{ verClave() ? 'Ocultar' : 'Ver' }}</button>
           </div>
         </label>
+        <label class="label cursor-pointer justify-start gap-3 py-1 font-normal">
+          <input type="checkbox" class="checkbox checkbox-primary" formControlName="recordar" />
+          <span>
+            <span class="font-medium">Mantener sesión conectada</span>
+            <span class="block text-sm text-base-content/70">Sigue abierta al cerrar el navegador. Solo termina con Cerrar sesión.</span>
+          </span>
+        </label>
         <button class="btn btn-primary btn-lg mt-1" type="submit" [disabled]="enviando()">
           {{ enviando() ? 'Entrando…' : 'Entrar' }}
         </button>
@@ -55,6 +62,7 @@ export class Login {
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
+    recordar: [this.auth.prefiereRecordar()],
   });
 
   constructor() {
@@ -72,8 +80,8 @@ export class Login {
     }
     this.enviando.set(true);
     this.error.set('');
-    const { email, password } = this.form.getRawValue();
-    this.auth.entrar(email.trim(), password).subscribe({
+    const { email, password, recordar } = this.form.getRawValue();
+    this.auth.entrar(email.trim(), password, recordar).subscribe({
       next: (user) => void this.router.navigateByUrl(rutaPorRol(user.rol)),
       error: (err: unknown) => {
         this.enviando.set(false);

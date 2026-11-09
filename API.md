@@ -686,6 +686,8 @@ Hasta 4 auxiliares.
   "iniciada_en": null,
   "llegada_base_en": null,
   "finalizada_en": null,
+  "km_inicial": null,
+  "km_final": null,
   "ultima_latitud": null,
   "ultima_longitud": null,
   "ultima_posicion_en": null
@@ -754,11 +756,23 @@ Pasa de `BORRADOR` a `NO_INICIADA`. Ahí la ve el conductor. Sin cuerpo.
 
 ### POST `/api/rutas/{id}/iniciar/`
 
-Solo el conductor asignado. Sin cuerpo. La ruta y sus destinos pasan a `EN_PROCESO`. Cada administrador recibe una notificación. Si ya tiene otra ruta en proceso, responde 400.
+Solo el conductor asignado. La ruta y sus destinos pasan a `EN_PROCESO`. Cada administrador recibe una notificación. Si ya tiene otra ruta en proceso, responde 400.
+
+```json
+{ "km_inicial": 45230 }
+```
+
+`km_inicial` es el odómetro del vehículo al salir. Número de 0 a 9999999, con un decimal como máximo. Obligatorio.
 
 ### POST `/api/rutas/{id}/llegada-base/`
 
-Conductor o administrador. Sin cuerpo. Exige que todas las paradas estén `EXITOSO` o `FALLIDO`. La ruta pasa a `FINALIZADA`.
+Conductor o administrador. Exige que todas las paradas estén `EXITOSO` o `FALLIDO`. La ruta pasa a `FINALIZADA`.
+
+```json
+{ "km_final": 45380 }
+```
+
+`km_final` es el odómetro al llegar a la base. Mismo formato que `km_inicial`. Obligatorio, y no puede ser menor que `km_inicial`.
 
 ### POST `/api/rutas/{id}/cancelar/`
 

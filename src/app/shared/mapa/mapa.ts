@@ -109,8 +109,8 @@ export class Mapa {
       const icono = L.divIcon({
         className: 'pin-icon',
         html: htmlMarca(marca),
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: marca.tipo === 'camion' && marca.texto ? [220, 40] : [32, 32],
+        iconAnchor: marca.tipo === 'camion' && marca.texto ? [16, 20] : [16, 16],
         popupAnchor: [0, -18],
       });
       const marker = L.marker([marca.lat, marca.lng], { icon: icono, title: marca.titulo });
@@ -150,7 +150,13 @@ export class Mapa {
 
 function htmlMarca(marca: MarcaMapa): string {
   if (marca.tipo === 'camion') {
-    return `<span class="pin pin-camion" title="${esc(marca.titulo)}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3 7h11v8H3V7zm11 2h3.2L20 12.2V15h-6V9zM6.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg></span>`;
+    const icono = `<span class="pin pin-camion" title="${esc(marca.titulo)}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M3 7h11v8H3V7zm11 2h3.2L20 12.2V15h-6V9zM6.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg></span>`;
+    if (!marca.texto) return icono;
+    const corte = marca.texto.indexOf(' · ');
+    const nombre = corte >= 0 ? marca.texto.slice(0, corte) : marca.texto;
+    const placa = corte >= 0 ? marca.texto.slice(corte + 3) : '';
+    const detalle = placa ? `<strong>${esc(nombre)}</strong><span>${esc(placa)}</span>` : `<strong>${esc(nombre)}</strong>`;
+    return `<span class="pin-unidad">${icono}<span class="pin-unidad-texto" title="${esc(marca.titulo)}">${detalle}</span></span>`;
   }
   if (marca.color) {
     const cerrada = marca.tipo === 'parada' && (marca.estado === 'EXITOSO' || marca.estado === 'FALLIDO' || marca.estado === 'REPROGRAMADO');

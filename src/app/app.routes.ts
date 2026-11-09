@@ -5,6 +5,8 @@ import { Configuracion } from './features/admin/configuracion';
 import { MapaVivo } from './features/admin/mapa-vivo';
 import { EvidenciasAdmin } from './features/admin/evidencias';
 import { Operacion } from './features/admin/operacion';
+import { RutasProgramadas } from './features/admin/rutas-programadas';
+import { ReporteAdmin } from './features/admin/reporte';
 import { PanelRuta, SeccionPendiente } from './features/admin/panel-ruta';
 import { ClienteAyuda } from './features/cliente/cliente-ayuda';
 import { ClienteDashboard } from './features/cliente/cliente-dashboard';
@@ -32,6 +34,8 @@ export const routes: Routes = [
       { path: 'clientes', component: PanelRuta, data: { modulo: 'clientes' } },
       { path: 'programacion', component: Operacion },
       { path: 'operacion', pathMatch: 'full', redirectTo: 'programacion' },
+      { path: 'rutas', component: RutasProgramadas },
+      { path: 'reportes', component: ReporteAdmin },
       { path: 'seguimiento', component: MapaVivo },
       { path: 'mapa', pathMatch: 'full', redirectTo: 'seguimiento' },
       { path: 'evidencias', component: EvidenciasAdmin },

@@ -63,6 +63,13 @@ export function etiquetaTipo(tipo: string): string {
   return tipo;
 }
 
+export function textoMotivo(destino: { motivo_servicio?: string | null; motivo_descripcion?: string | null } | null | undefined): string {
+  const servicio = destino?.motivo_servicio?.trim() ?? '';
+  const cierre = destino?.motivo_descripcion?.trim() ?? '';
+  if (cierre && servicio && cierre !== servicio) return `${servicio} · ${cierre}`;
+  return cierre || servicio || '—';
+}
+
 export function etiquetaRol(rol: string): string {
   if (rol in ROLES) return ROLES[rol as Rol];
   return rol;
@@ -142,6 +149,20 @@ export function numero(valor: unknown): number | null {
   if (valor === null || valor === undefined || valor === '') return null;
   const n = Number(valor);
   return Number.isFinite(n) ? n : null;
+}
+
+const KILOMETRAJE = /^\d{1,7}(\.\d)?$/;
+
+export function leerKilometraje(valor: string): number | null {
+  const limpio = valor.trim().replace(',', '.');
+  if (!KILOMETRAJE.test(limpio)) return null;
+  return Number(limpio);
+}
+
+export function textoKilometraje(valor: number | string | null | undefined): string {
+  const n = numero(valor);
+  if (n == null || n < 0) return '';
+  return new Intl.NumberFormat('es-PE', { maximumFractionDigits: 1 }).format(n);
 }
 
 const COORDENADA = /^(-?\d{1,3})(?:\.(\d+))?$/;

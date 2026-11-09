@@ -1,5 +1,6 @@
+import { valoresExcel } from '../../core/columnas-destino';
 import { Destino, EstadoDestino, Ruta } from '../../core/models';
-import { etiquetaTipo, nombrePersona } from '../../core/texto';
+import { etiquetaTipo, nombrePersona, textoMotivo } from '../../core/texto';
 import { ZonaFiltro } from './rutas-cliente';
 
 export type GrupoPedido = 'EXITOSO' | 'FALLIDO' | 'PENDIENTE';
@@ -29,8 +30,11 @@ export interface PedidoVista {
   conductor: string;
   documento: string;
   destinatario: string;
+  telefono: string;
+  referencia: string;
   operacion: string;
   actualizado: string;
+  excel: Record<string, string>;
 }
 
 export interface FilaKm {
@@ -78,22 +82,26 @@ const MESES = [
   'Diciembre',
 ];
 
-export function pedidosDe(destinos: readonly Destino[], rutas: readonly Ruta[]): PedidoVista[] {
+export function pedidosDe(
+  destinos: readonly Destino[],
+  rutas: readonly Ruta[],
+  sedes: ReadonlyMap<number, string> = new Map(),
+): PedidoVista[] {
   const porRuta = new Map(rutas.map((ruta) => [ruta.id, ruta]));
   return destinos.map((destino) => {
     const ruta = destino.ruta_id == null ? undefined : porRuta.get(destino.ruta_id);
     const grupo: GrupoPedido =
       destino.estado === 'EXITOSO' ? 'EXITOSO' : destino.estado === 'FALLIDO' || destino.estado === 'REPROGRAMADO' ? 'FALLIDO' : 'PENDIENTE';
-    const descripcion = destino.motivo_descripcion?.trim();
+    const motivo = textoMotivo(destino);
     return {
       id: destino.id,
       fecha: destino.fecha.slice(0, 10),
       codigo: destino.codigo_externo,
       grupo,
       estado: destino.estado,
-      servicio: `${etiquetaTipo(destino.tipo_servicio)} · ${destino.direccion || destino.motivo_servicio || 'Sin dirección'}`,
+      servicio: `${etiquetaTipo(destino.tipo_servicio)} · ${destino.direccion.trim() || 'Sin dirección'}`,
       distrito: destino.distrito.trim() || 'Sin distrito',
-      motivo: descripcion || (grupo === 'FALLIDO' ? 'Sin motivo' : '—'),
+      motivo: motivo === '—' && grupo === 'FALLIDO' ? 'Sin motivo' : motivo,
       comentario: destino.observacion_cierre.trim() || destino.observaciones.trim() || '—',
       rutaId: ruta ? destino.ruta_id : null,
       zona: ruta ? (ruta.dentro_de_lima ? 'lima' : 'provincia') : null,
@@ -101,8 +109,11 @@ export function pedidosDe(destinos: readonly Destino[], rutas: readonly Ruta[]):
       conductor: ruta?.conductor ? nombrePersona(ruta.conductor) : '—',
       documento: destino.documento_receptor.trim() || '—',
       destinatario: `${destino.nombre_receptor} ${destino.apellido_receptor}`.trim() || '—',
+      telefono: destino.telefono_receptor.trim() || '—',
+      referencia: destino.referencia.trim(),
       operacion: etiquetaTipo(destino.tipo_servicio),
       actualizado: destino.actualizado_en,
+      excel: valoresExcel(destino, destino.sede_id == null ? '' : sedes.get(destino.sede_id) ?? ''),
     };
   });
 }

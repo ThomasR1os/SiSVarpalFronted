@@ -160,10 +160,9 @@
                     <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" [checked]="paginaMarcada()" (change)="alternarPagina($event)" aria-label="Seleccionar todos" />
                   </th>
                   <th>#</th>
-                  <th>Documento</th>
-                  <th>Destinatario</th>
-                  <th>Dirección</th>
-                  <th>Distrito</th>
+                  @for (columna of columnasDestino(); track columna.clave) {
+                    <th>{{ columna.etiqueta }}</th>
+                  }
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -177,10 +176,10 @@
                       }
                     </td>
                     <td data-label="#">{{ indice + 1 }}</td>
-                    <td data-label="Documento">{{ documentoDestino(destino) }}</td>
-                    <td data-label="Destinatario">{{ nombreDestinatario(destino) }}</td>
-                    <td data-label="Dirección">{{ destino.direccion }}</td>
-                    <td data-label="Distrito">{{ destino.distrito }}</td>
+                    @let fila = filaExcel(destino);
+                    @for (columna of columnasDestino(); track columna.clave) {
+                      <td class="max-w-xs whitespace-normal" [attr.data-label]="columna.etiqueta">{{ fila[columna.clave] }}</td>
+                    }
                     <td data-label="Estado">
                       <span [class]="claseEstado(destino.estado)">{{ textoEstado(destino.estado) }}</span>
                     </td>
@@ -204,7 +203,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr class="fila-vacia"><td colspan="8">No hay destinatarios el {{ etiquetaFecha() }}. Prueba otra fecha o limpia los filtros.</td></tr>
+                  <tr class="fila-vacia"><td [attr.colspan]="columnasDestino().length + 4">No hay destinatarios el {{ etiquetaFecha() }}. Prueba otra fecha o limpia los filtros.</td></tr>
                 }
               </tbody>
             </table>
@@ -385,7 +384,9 @@
                 <app-badge [estado]="ruta.estado" />
                 <span class="prog-ruta-abrir">Abrir</span>
               </button>
-              <button type="button" class="prog-accion peligro" (click)="pedirEliminarRuta(ruta)">Eliminar</button>
+              @if (ruta.estado !== 'FINALIZADA') {
+                <button type="button" class="prog-accion peligro" (click)="pedirEliminarRuta(ruta)">Eliminar</button>
+              }
             </div>
           } @empty { <p class="vacio-texto">No hay rutas en esta fecha.</p> }
         </div>

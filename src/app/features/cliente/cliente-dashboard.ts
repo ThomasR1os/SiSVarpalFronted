@@ -1,11 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { Api } from '../../core/api';
 import { mensajeError } from '../../core/api-error';
 import { AuthService } from '../../core/auth.service';
-import { Ruta } from '../../core/models';
-import { fechaCorta, hoy } from '../../core/texto';
+import { columnasExcel as columnasDelExcel } from '../../core/columnas-destino';
+import { Pagina, Punto, Ruta } from '../../core/models';
+import { TAMANO_CATALOGO, fechaCorta, hoy, numero, textoKilometraje } from '../../core/texto';
 import { Badge } from '../../shared/badge';
 import {
   PedidoVista,
@@ -171,6 +172,49 @@ import { finDeMes, listarDestinosCliente, listarRutasCliente, restarDias } from 
       }
     </section>
 
+    <section class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
+      <div class="mb-3">
+        <h2 class="text-base">Kilómetros y horas</h2>
+        <p class="ayuda">Cada ruta finalizada del periodo. En verde hasta 120 km y 10 h; en rojo cuando se pasa de eso.</p>
+      </div>
+      <div class="data-table max-h-[28rem] overflow-auto">
+        <table class="table table-sm table-pin-rows">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Placa</th>
+              <th>Km recorrido</th>
+              <th>Horas trabajadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of jornadas(); track fila.id) {
+              <tr>
+                <td data-label="Fecha">{{ fechaCorta(fila.fecha) }}</td>
+                <td data-label="Placa">{{ fila.placa }}</td>
+                <td data-label="Km recorrido">
+                  @if (fila.km == null) {
+                    —
+                  } @else {
+                    <span class="inline-flex min-w-14 justify-center rounded-md px-2 py-1 font-semibold text-white" [class]="fila.km > 120 ? 'bg-error' : 'bg-success'" [attr.title]="fila.km > 120 ? 'Supera 120 km' : 'Hasta 120 km'">{{ textoKilometraje(fila.km) }}</span>
+                  }
+                </td>
+                <td data-label="Horas trabajadas">
+                  @if (fila.horasMs == null) {
+                    —
+                  } @else {
+                    <span class="inline-flex min-w-14 justify-center rounded-md px-2 py-1 font-semibold text-white" [class]="fila.horasMs > topeHoras ? 'bg-error' : 'bg-success'" [attr.title]="fila.horasMs > topeHoras ? 'Supera 10 horas' : 'Hasta 10 horas'">{{ textoHoras(fila.horasMs) }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr class="fila-vacia"><td colspan="4">No hay rutas finalizadas en este periodo.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="grid items-stretch gap-3 xl:grid-cols-3">
       <article class="flex h-full flex-col rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm">
         <h2 class="text-base">Programaciones por fecha</h2>
@@ -244,18 +288,17 @@ import { finDeMes, listarDestinosCliente, listarRutasCliente, restarDias } from 
       <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 class="text-base">Últimas programaciones</h2>
-          <p class="ayuda">Pedidos del periodo. El código abre la ruta en el historial.</p>
+          <p class="ayuda">Todos los pedidos del periodo, con las columnas del Excel. El código abre la ruta en el historial.</p>
         </div>
         <a class="btn btn-ghost btn-sm" routerLink="/cliente/historial">Ver todas</a>
       </div>
-      <div class="data-table max-h-[28rem] overflow-auto">
+      <div class="data-table tabla-excel max-h-[28rem] overflow-auto">
         <table class="table table-sm table-pin-rows">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Código</th>
-              <th>Distrito</th>
-              <th>Descripción</th>
+              @for (columna of columnasExcel(); track columna.clave) {
+                <th>{{ columna.etiqueta }}</th>
+              }
               <th>Estado</th>
               <th>Placa</th>
             </tr>
@@ -263,21 +306,25 @@ import { finDeMes, listarDestinosCliente, listarRutasCliente, restarDias } from 
           <tbody>
             @for (pedido of recientes(); track pedido.id) {
               <tr>
-                <td data-label="Fecha">{{ fechaCorta(pedido.fecha) }}</td>
-                <td data-label="Código">
-                  @if (pedido.rutaId) {
-                    <a class="link link-hover" [routerLink]="['/cliente/historial']" [queryParams]="consultaPedido(pedido)">{{ pedido.codigo }}</a>
-                  } @else {
-                    {{ pedido.codigo }}
+                @for (columna of columnasExcel(); track columna.clave) {
+                  <td class="max-w-xs whitespace-normal" [attr.data-label]="columna.etiqueta">
+                    @if (columna.clave === 'codigo_externo' && pedido.rutaId) {
+                      <a class="link link-hover" [routerLink]="['/cliente/historial']" [queryParams]="consultaPedido(pedido)">{{ pedido.excel[columna.clave] }}</a>
+                    } @else {
+                      {{ pedido.excel[columna.clave] || '—' }}
+                    }
+                  </td>
+                }
+                <td data-label="Estado"><app-badge [estado]="pedido.estado" /></td>
+                <td data-label="Placa">
+                  {{ pedido.placa }}
+                  @if (pedido.conductor !== '—') {
+                    <span class="block text-xs text-base-content/60">{{ pedido.conductor }}</span>
                   }
                 </td>
-                <td data-label="Distrito">{{ pedido.distrito }}</td>
-                <td class="max-w-xs whitespace-normal" data-label="Descripción">{{ pedido.servicio }}</td>
-                <td data-label="Estado"><app-badge [estado]="pedido.estado" /></td>
-                <td data-label="Placa">{{ pedido.placa }}</td>
               </tr>
             } @empty {
-              <tr class="fila-vacia"><td colspan="6">No hay pedidos en este periodo.</td></tr>
+              <tr class="fila-vacia"><td [attr.colspan]="columnasExcel().length + 2">No hay pedidos en este periodo.</td></tr>
             }
           </tbody>
         </table>
@@ -292,6 +339,9 @@ export class ClienteDashboard {
   private readonly base = signal<PedidoVista[]>([]);
   private readonly rutas = signal<Ruta[]>([]);
   protected readonly fechaCorta = fechaCorta;
+  protected readonly textoKilometraje = textoKilometraje;
+  protected readonly textoHoras = textoHoras;
+  protected readonly topeHoras = TOPE_HORAS_MS;
   protected readonly etiquetaDia = etiquetaDia;
   protected readonly etiquetaMes = etiquetaMes;
   protected readonly meses = ultimosMeses(this.hoyIso);
@@ -314,8 +364,9 @@ export class ClienteDashboard {
   });
   protected readonly distritos = computed(() => porDistrito(this.visibles()).slice(0, 8));
   protected readonly recientes = computed(() =>
-    [...this.visibles()].sort((a, b) => b.fecha.localeCompare(a.fecha) || a.codigo.localeCompare(b.codigo)).slice(0, 8),
+    [...this.visibles()].sort((a, b) => b.fecha.localeCompare(a.fecha) || a.codigo.localeCompare(b.codigo)),
   );
+  protected readonly columnasExcel = computed(() => columnasDelExcel(this.recientes().map((pedido) => pedido.excel)));
   protected readonly enCurso = computed(() =>
     this.rutas().some((ruta) => ruta.estado === 'EN_PROCESO' && this.enZona(ruta.dentro_de_lima ? 'lima' : 'provincia')),
   );
@@ -348,15 +399,26 @@ export class ClienteDashboard {
     this.resumenZona('lima', 'Operación local', 'Lima metropolitana'),
     this.resumenZona('provincia', 'Operación provincia', 'Puntos fuera de Lima metropolitana'),
   ]);
+  protected readonly jornadas = computed(() =>
+    filasJornada(
+      this.rutas().filter(
+        (ruta) => this.enVentana(ruta.fecha.slice(0, 10)) && this.enZona(ruta.dentro_de_lima ? 'lima' : 'provincia'),
+      ),
+    ),
+  );
 
   constructor() {
     forkJoin({
       rutas: listarRutasCliente(this.api),
       destinos: listarDestinosCliente(this.api),
+      sedes: this.api.get<Pagina<Punto>>('/api/puntos/', { es_sede: true, activo: true, page_size: TAMANO_CATALOGO }).pipe(
+        map((pagina) => pagina.results),
+        catchError(() => of([] as Punto[])),
+      ),
     }).subscribe({
-      next: ({ rutas, destinos }) => {
+      next: ({ rutas, destinos, sedes }) => {
         this.rutas.set(rutas);
-        this.base.set(pedidosDe(destinos, rutas));
+        this.base.set(pedidosDe(destinos, rutas, new Map(sedes.map((sede) => [sede.id, sede.codigo]))));
         this.cargando.set(false);
       },
       error: (err: unknown) => {
@@ -475,4 +537,55 @@ export class ClienteDashboard {
 function porcentaje(parte: number, total: number): string {
   if (!total) return '0%';
   return `${Math.round((parte / total) * 100)}%`;
+}
+
+const TOPE_HORAS_MS = 10 * 60 * 60 * 1000;
+
+interface FilaJornada {
+  id: number;
+  fecha: string;
+  placa: string;
+  km: number | null;
+  horasMs: number | null;
+}
+
+function filasJornada(rutas: Ruta[]): FilaJornada[] {
+  return rutas
+    .filter((ruta) => ruta.estado === 'FINALIZADA')
+    .map((ruta) => ({
+      id: ruta.id,
+      fecha: ruta.fecha.slice(0, 10),
+      placa: ruta.vehiculo?.placa || '—',
+      km: kilometrosRecorridos(ruta),
+      horasMs: horasTrabajadas(ruta),
+    }))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || a.placa.localeCompare(b.placa));
+}
+
+function kilometrosRecorridos(ruta: Ruta): number | null {
+  const inicial = numero(ruta.km_inicial);
+  const final = numero(ruta.km_final);
+  if (inicial == null || final == null) return null;
+  return Math.round((final - inicial) * 10) / 10;
+}
+
+function horasTrabajadas(ruta: Ruta): number | null {
+  const inicio = instante(ruta.iniciada_en);
+  const fin = instante(ruta.finalizada_en) ?? instante(ruta.llegada_base_en);
+  if (inicio == null || fin == null || fin < inicio) return null;
+  return fin - inicio;
+}
+
+function instante(valor: string | null | undefined): number | null {
+  if (!valor) return null;
+  const ms = Date.parse(valor);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function textoHoras(ms: number): string {
+  const minutos = Math.floor(ms / 60000);
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (resto === 0) return String(horas);
+  return `${horas} h ${resto} min`;
 }

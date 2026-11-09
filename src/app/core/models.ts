@@ -175,6 +175,7 @@ export interface Parada {
   longitud: string;
   nombre_receptor: string;
   apellido_receptor: string;
+  telefono_receptor?: string;
   hora_estimada: string | null;
   hora_llegada: string | null;
   hora_salida: string | null;
@@ -207,6 +208,8 @@ export interface Ruta {
   iniciada_en: string | null;
   llegada_base_en: string | null;
   finalizada_en: string | null;
+  km_inicial?: number | string | null;
+  km_final?: number | string | null;
   ultima_latitud: string | null;
   ultima_longitud: string | null;
   ultima_posicion_en: string | null;

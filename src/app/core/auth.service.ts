@@ -6,6 +6,7 @@ import { rutaApi } from './backend';
 import { Usuario } from './models';
 
 const REFRESH_KEY = 'varpal_refresh';
+const RECORDAR_KEY = 'varpal_recordar';
 const MSG_KEY = 'varpal_sesion_mensaje';
 
 interface LoginRespuesta {
@@ -32,24 +33,29 @@ export class AuthService {
     return this.access();
   }
 
-  entrar(email: string, password: string): Observable<Usuario> {
+  /** True si la última vez eligió seguir conectado al cerrar el navegador. */
+  prefiereRecordar(): boolean {
+    return localStorage.getItem(RECORDAR_KEY) !== '0';
+  }
+
+  entrar(email: string, password: string, recordar = false): Observable<Usuario> {
     return this.crudo
       .post<LoginRespuesta>(rutaApi('/api/auth/login/'), { email, password })
       .pipe(
-        tap((res) => this.guardar(res.access, res.refresh, res.user)),
+        tap((res) => this.guardar(res.access, res.refresh, res.user, recordar)),
         map((res) => res.user),
       );
   }
 
   refreshAccess(): Observable<string> {
     if (this.refresh$) return this.refresh$;
-    const refresh = localStorage.getItem(REFRESH_KEY);
+    const refresh = this.leerRefresh();
     if (!refresh) return throwError(() => new Error('No hay sesión guardada.'));
 
     this.refresh$ = this.crudo.post<RefreshRespuesta>(rutaApi('/api/auth/refresh/'), { refresh }).pipe(
       tap((res) => {
         this.access.set(res.access);
-        localStorage.setItem(REFRESH_KEY, res.refresh);
+        this.escribirRefresh(res.refresh);
       }),
       map((res) => res.access),
       shareReplay({ bufferSize: 1, refCount: true }),
@@ -61,7 +67,7 @@ export class AuthService {
   }
 
   restaurar(): Promise<void> {
-    if (!localStorage.getItem(REFRESH_KEY)) return Promise.resolve();
+    if (!this.leerRefresh()) return Promise.resolve();
     return new Promise((resolve) => {
       this.refreshAccess().subscribe({
         next: () => {
@@ -95,6 +101,7 @@ export class AuthService {
     this.access.set(null);
     this.usuario.set(null);
     localStorage.removeItem(REFRESH_KEY);
+    sessionStorage.removeItem(REFRESH_KEY);
     if (mensaje) sessionStorage.setItem(MSG_KEY, mensaje);
   }
 
@@ -104,11 +111,27 @@ export class AuthService {
     return mensaje;
   }
 
-  private guardar(access: string, refresh: string, user: Usuario): void {
+  private guardar(access: string, refresh: string, user: Usuario, recordar: boolean): void {
     this.access.set(access);
-    localStorage.setItem(REFRESH_KEY, refresh);
+    localStorage.setItem(RECORDAR_KEY, recordar ? '1' : '0');
+    this.escribirRefresh(refresh, recordar);
     this.usuario.set(user);
     sessionStorage.removeItem(MSG_KEY);
+  }
+
+  private leerRefresh(): string | null {
+    return localStorage.getItem(REFRESH_KEY) ?? sessionStorage.getItem(REFRESH_KEY);
+  }
+
+  private escribirRefresh(refresh: string, recordar?: boolean): void {
+    const persistir = recordar ?? localStorage.getItem(REFRESH_KEY) !== null;
+    if (persistir) {
+      sessionStorage.removeItem(REFRESH_KEY);
+      localStorage.setItem(REFRESH_KEY, refresh);
+      return;
+    }
+    localStorage.removeItem(REFRESH_KEY);
+    sessionStorage.setItem(REFRESH_KEY, refresh);
   }
 
   private alFallarRestauracion(err: unknown): void {
