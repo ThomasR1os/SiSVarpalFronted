@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { EMPTY, Observable, expand, forkJoin, reduce } from 'rxjs';
 import { Api, guardarBlob } from '../../core/api';
+import { blobExcel } from '../../core/excel';
 import { mensajeError } from '../../core/api-error';
 import { Cliente, Destino, EstadoDestino, Pagina, Ruta } from '../../core/models';
 import { TAMANO_CATALOGO, etiquetaEstado, etiquetaTipo, fechaCorta, fechaHora, nombrePersona, textoMotivo } from '../../core/texto';
@@ -330,8 +331,7 @@ export class ReporteAdmin {
       pedido.conductor,
       pedido.comentario,
     ]);
-    const csv = [encabezado, ...filas].map((columnas) => columnas.map((valor) => `"${valor.replaceAll('"', '""')}"`).join(',')).join('\n');
-    guardarBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `reporte-${this.zona()}.csv`);
+    guardarBlob(blobExcel('Pedidos', [encabezado, ...filas]), `reporte-${this.zona()}.xlsx`);
   }
 }
 

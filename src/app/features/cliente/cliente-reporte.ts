@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Api, guardarBlob } from '../../core/api';
+import { blobExcel } from '../../core/excel';
 import { mensajeError } from '../../core/api-error';
 import { EstadoDestino, Ruta } from '../../core/models';
 import { etiquetaEstado, fechaCorta, fechaHora } from '../../core/texto';
@@ -318,8 +319,7 @@ export class ClienteReporte {
       pedido.conductor,
       pedido.comentario,
     ]);
-    const csv = [encabezado, ...filas].map((columnas) => columnas.map(celdaCsv).join(',')).join('\n');
-    guardarBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `reporte-${this.zona()}.csv`);
+    guardarBlob(blobExcel('Pedidos', [encabezado, ...filas]), `reporte-${this.zona()}.xlsx`);
   }
 }
 
@@ -330,8 +330,4 @@ function porcentaje(parte: number, total: number): string {
 
 function unicos(valores: string[]): string[] {
   return [...new Set(valores)].sort((a, b) => a.localeCompare(b, 'es'));
-}
-
-function celdaCsv(valor: string): string {
-  return `"${valor.replaceAll('"', '""')}"`;
 }
